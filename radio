@@ -162,6 +162,7 @@ bool isPlaying = false;           // Flaga określająca, czy obecnie trwa odtwa
 bool mp3 = false;                 // Flaga określająca, czy aktualny plik audio jest w formacie MP3
 bool flac = false;                // Flaga określająca, czy aktualny plik audio jest w formacie FLAC
 bool aac = false;                 // Flaga określająca, czy aktualny plik audio jest w formacie AAC
+bool vorbis = false;                 // Flaga określająca, czy aktualny plik audio jest w formacie VORBIS
 bool id3tag = false;              // Flaga określająca, czy plik audio posiada dane ID3
 bool timeDisplay = true;          // Flaga określająca kiedy pokazać czas na wyświetlaczu, domyślnie od razu po starcie
 bool listedStations = false;      // Flaga określająca czy na ekranie jest pokazana lista stacji do wyboru
@@ -1100,7 +1101,7 @@ void changeStation() {
   u8g2.drawStr(34, 33, "Loading stream..."); // 8 znakow  x 11 szer
   u8g2.sendBuffer();
 
-  mp3 = flac = aac = false;
+  mp3 = flac = aac = vorbis = false;
   stationFromBuffer = station_nr;
   stationString.remove(0);  // Usunięcie wszystkich znaków z obiektu stationString
 
@@ -1186,7 +1187,7 @@ void changeStation() {
 void readSDStations() {
   stationsCount = 0;
   Serial.println("Plik Banu isnieje na karcie SD. Czytamy TYLKO z karty");
-  mp3 = flac = aac = false;
+  mp3 = flac = aac = vorbis = false;
   stationString.remove(0);  // Usunięcie wszystkich znaków z obiektu stationString
 
   // Tworzymy nazwę pliku banku
@@ -1473,16 +1474,26 @@ void audio_info(const char *info) {
     mp3 = true;
     flac = false;
     aac = false;
+    vorbis = false;
   }
 
   if (String(info).indexOf("FLACDecoder") != -1) {
     flac = true;
     mp3 = false;
     aac = false;
+    vorbis = false;
   }
 
   if (String(info).indexOf("AACDecoder") != -1) {
     aac = true;
+    flac = false;
+    mp3 = false;
+    vorbis = false;
+  }
+
+  if (String(info).indexOf("VORBISDecoder") != -1) {
+    vorbis = true;
+    aac = false;
     flac = false;
     mp3 = false;
   }
@@ -2691,7 +2702,7 @@ void updateTimerFlag() {
 void updateTimer() {
    // Wypełnij spacjami, aby wyczyścić pole
   //u8g2.drawStr(208, 63, "         "); // czyszczenie pola zegara
-  //u8g2.drawStr(128, 63, "    "); // czyszczenie pola FLAC/MP3/AAC
+  //u8g2.drawStr(128, 63, "    "); // czyszczenie pola FLAC/MP3/AAC/VORBIS
 
   // Zwiększ licznik sekund
   seconds++;
@@ -2718,6 +2729,10 @@ void updateTimer() {
         u8g2.drawStr(130, 63, " AAC");
         //Serial.println("Gram AAC");
       }
+      if (vorbis == true) {
+        u8g2.drawStr(130, 63, " VBR");
+        //Serial.println("Gram VBR");
+      }
     }
 
     if ((currentOption == PLAY_FILES) && (bitratePresent == true)) {
@@ -2728,7 +2743,7 @@ void updateTimer() {
       u8g2.sendBuffer();
     }
 
-    if ((currentOption == INTERNET_RADIO) && ((mp3 == true) || (flac == true) || (aac == true))) {
+    if ((currentOption == INTERNET_RADIO) && ((mp3 == true) || (flac == true) || (aac == true) || (vorbis == true))) {
       // Struktura przechowująca informacje o czasie
       struct tm timeinfo;
 
