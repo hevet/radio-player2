@@ -11,7 +11,7 @@
 #include <U8g2lib.h>      // Biblioteka do obsługi wyświetlaczy
 #include <ezButton.h>     // Biblioteka do obsługi enkodera z przyciskiem
 #include <HTTPClient.h>   // Biblioteka do wykonywania żądań HTTP, umożliwia komunikację z serwerami przez protokół HTTP
-//#include <EEPROM.h>       // Biblioteka do obsługi pamięci EEPROM, przechowywanie danych w pamięci nieulotnej
+//#include <EEPROM.h>     // Biblioteka do obsługi pamięci EEPROM, przechowywanie danych w pamięci nieulotnej
 #include <Ticker.h>       // Mechanizm tickera do odświeżania timera 1s, pomocny do cyklicznych akcji w pętli głównej
 #include <WiFiManager.h>  // Biblioteka do zarządzania konfiguracją sieci WiFi, opis jak ustawić połączenie WiFi przy pierwszym uruchomieniu jest opisany tu: https://github.com/tzapu/WiFiManager
 #include <WiFi.h>
