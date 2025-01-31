@@ -87,10 +87,10 @@
 #define rcCmdMute       0xB916  // Wyciszenie dzwieku
 #define rcCmdAud        0x0000  // Equalizer dzwieku
 #define rcCmdDirect     0x0007  // Janość ekranu, dwa tryby 1/16 lub pełna jasność     
-#define rcCmdBankMinus  0x0000  // Wysweitla wybór banku
-#define rcCmdBankPlus   0x0047  // Wysweitla wybór banku
-#define rcCmdRed        0xB988  // Przełacza ładowanie banku kartaSD - serwer GitHub w menu bank
-#define rcCmdGreen      0xB992  // VU wyłaczony, VU tryb 1, VU tryb 2, zegar
+#define rcCmdBankMinus  0x0000  // Wyświetla wybór banku
+#define rcCmdBankPlus   0x0047  // Wyświetla wybór banku
+#define rcCmdRed        0x0045  // Przełącza ładowanie banku kartaSD - serwer GitHub w menu bank
+#define rcCmdGreen      0x0000  // VU wyłaczony, VU tryb 1, VU tryb 2, zegar
 #define rcCmdKey0       0x0016  // Przycisk "0"
 #define rcCmdKey1       0x000C  // Przycisk "1"
 #define rcCmdKey2       0x0018  // Przycisk "2"
@@ -2753,7 +2753,7 @@ void updateTimer() {
       {
         u8g2.setFont(u8g2_font_7Segments_26x42_mn);
         snprintf(timeString, sizeof(timeString), "%02d:%02d", timeinfo.tm_hour, timeinfo.tm_min);
-        u8g2.drawStr(48, 45, timeString);
+        u8g2.drawStr(58, 45, timeString);
         
         
         u8g2.setFont(u8g2_font_fub14_tf);
@@ -2793,7 +2793,7 @@ void updateTimer() {
 
 
         snprintf(timeString, sizeof(timeString), ":%02d", timeinfo.tm_sec);
-        u8g2.drawStr(208, 45, timeString);
+        u8g2.drawStr(218, 45, timeString);
       }
 
 
