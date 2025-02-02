@@ -11,7 +11,7 @@
 #include <U8g2lib.h>      // Biblioteka do obsługi wyświetlaczy
 #include <ezButton.h>     // Biblioteka do obsługi enkodera z przyciskiem
 #include <HTTPClient.h>   // Biblioteka do wykonywania żądań HTTP, umożliwia komunikację z serwerami przez protokół HTTP
-//#include <EEPROM.h>     // Biblioteka do obsługi pamięci EEPROM, przechowywanie danych w pamięci nieulotnej
+//#include <EEPROM.h>       // Biblioteka do obsługi pamięci EEPROM, przechowywanie danych w pamięci nieulotnej
 #include <Ticker.h>       // Mechanizm tickera do odświeżania timera 1s, pomocny do cyklicznych akcji w pętli głównej
 #include <WiFiManager.h>  // Biblioteka do zarządzania konfiguracją sieci WiFi, opis jak ustawić połączenie WiFi przy pierwszym uruchomieniu jest opisany tu: https://github.com/tzapu/WiFiManager
 #include <WiFi.h>
@@ -162,7 +162,7 @@ bool isPlaying = false;           // Flaga określająca, czy obecnie trwa odtwa
 bool mp3 = false;                 // Flaga określająca, czy aktualny plik audio jest w formacie MP3
 bool flac = false;                // Flaga określająca, czy aktualny plik audio jest w formacie FLAC
 bool aac = false;                 // Flaga określająca, czy aktualny plik audio jest w formacie AAC
-bool vorbis = false;                 // Flaga określająca, czy aktualny plik audio jest w formacie VORBIS
+bool vorbis = false;              // Flaga określająca, czy aktualny plik audio jest w formacie VORBIS
 bool id3tag = false;              // Flaga określająca, czy plik audio posiada dane ID3
 bool timeDisplay = true;          // Flaga określająca kiedy pokazać czas na wyświetlaczu, domyślnie od razu po starcie
 bool listedStations = false;      // Flaga określająca czy na ekranie jest pokazana lista stacji do wyboru
@@ -4006,8 +4006,9 @@ void loop()
       }
       else if (ir_code == rcCmdGreen) {vuMeterMode = !vuMeterMode;} // Zmiana trybu VU meter z przerywanych kresek na ciągłe paski
       else if (ir_code == rcCmdDirect) {
-        displayBrightness =  displayBrightness + 15;
-        if (displayBrightness > 15){displayBrightness = 0;}
+        if (displayBrightness > 0) {displayBrightness = 0;} 
+        else {displayBrightness = 255;
+      }
         u8g2.sendF("ca", 0xC7, displayBrightness);
         }
       else if (ir_code == rcCmdSrc) 
