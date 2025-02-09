@@ -19,7 +19,7 @@
 #include <Time.h>  // Biblioteka do obsługi funkcji związanych z czasem, np. odczytu daty i godziny
 
 
-#define softwareRev "v3.14"  // wersja oprogramowania
+#define softwareRev "v3.15"  // wersja oprogramowania
 
 // definicja pinow czytnika karty SD
 #define SD_CS 47    // Pin CS (Chip Select) dla karty SD wybierany jako interfejs SPI
@@ -43,7 +43,7 @@
 #define SCREEN_WIDTH 256        // Szerokość ekranu w pikselach
 #define SCREEN_HEIGHT 64        // Wysokość ekranu w pikselach
 
-// Enkoder 1 - uzwyany dla odtwarzacza
+// Enkoder 1 - uzywany dla odtwarzacza
 #define CLK_PIN1 6              // Podłączenie z pinu 6 do CLK na enkoderze prawym
 #define DT_PIN1 5               // Podłączenie z pinu 5 do DT na enkoderze prawym
 #define SW_PIN1 4               // Podłączenie z pinu 4 do SW na enkoderze prawym (przycisk)
@@ -266,6 +266,7 @@ SPIClass customSPI = SPIClass(HSPI);  // Używamy HSPI, ale z własnymi pinami
 ezButton button1(SW_PIN1);  // Utworzenie obiektu przycisku z enkodera 1 ezButton, podłączonego do pinu 4
 ezButton button2(SW_PIN2);  // Utworzenie obiektu przycisku z enkodera 1 ezButton, podłączonego do pinu 1
 Audio audio;                // Obiekt do obsługi funkcji związanych z dźwiękiem i audio
+AudioBuffer audioBuffer;
 Ticker timer1;              // Timer do updateTimer co 1s
 //Ticker timer2;                            // Timer do getWeatherData co 60s
 //Ticker timer3;                            // Timer do przełączania wyświetlania danych pogodoych w ostatniej linii co 10s
@@ -835,7 +836,7 @@ void handleButtons() {
         timeDisplay = false;
         bankMenuEnable = false;
         
-        vuMeterMode = !vuMeterMode;
+        //vuMeterMode = !vuMeterMode;
         //audio.setTone(6, -4, 6);
         action3Taken = true;
       }
@@ -1570,6 +1571,7 @@ void audio_showstreamtitle(const char *info) {
     ActionNeedUpdateTime = true;
     if ((volumeSet == false) && (bankMenuEnable == false) && (listedStations == false))
     {
+    screenRefresh = true;
     displayRadio();
     }
   }
@@ -1693,28 +1695,45 @@ void listDirectories(const char *dirname) {
 
 // Funkcja do przewijania w górę
 void scrollUp() {
-  if (currentSelection > 0) {
+  if (currentSelection > 0) 
+  {
     currentSelection--;
-    if (currentSelection < firstVisibleLine) {
+    if (currentSelection < firstVisibleLine) 
+    {
       firstVisibleLine = currentSelection;
     }
   }
-  // Dodaj dodatkowy wydruk do diagnostyki
+  else
+  {
+    // Jeśli osiągnięto wartość 0, przejdź do najwyższej wartości
+    currentSelection = maxSelection(); 
+    firstVisibleLine = currentSelection - maxVisibleLines + 1; // Ustaw pierwszą widoczną linię na najwyższą
+  }
+  
   Serial.print("Scroll Up: CurrentSelection = ");
   Serial.println(currentSelection);
 }
 
 // Funkcja do przewijania w dół
-void scrollDown() {
-  if (currentSelection < maxSelection()) {
+void scrollDown() 
+{
+  if (currentSelection < maxSelection()) 
+  {
     currentSelection++;
-    if (currentSelection >= firstVisibleLine + maxVisibleLines) {
+    if (currentSelection >= firstVisibleLine + maxVisibleLines) 
+    {
       firstVisibleLine++;
-    }
-    // Dodaj dodatkowy wydruk do diagnostyki
-    Serial.print("Scroll Down: CurrentSelection = ");
-    Serial.println(currentSelection);
+    }								 
   }
+    else
+  {
+    // Jeśli osiągnięto maksymalną wartość, przejdź do najmniejszej (0)
+    currentSelection = 0;
+    firstVisibleLine = 0; // Przywróć do pierwszej widocznej linii
+  }
+    
+  Serial.print("Scroll Down: CurrentSelection = ");
+  Serial.println(currentSelection);
 }
 
 int maxSelection() {
@@ -1869,6 +1888,64 @@ void playFromSelectedFolder() {
   root.close();
 }
 
+
+void drawSignalPower(uint8_t xpwr, uint8_t ypwr, bool print)
+{
+  // Wartosci na podstawie ->  https://www.intuitibits.com/2016/03/23/dbm-to-percent-conversion/
+  int signal_dBM[] = { -100, -99, -98, -97, -96, -95, -94, -93, -92, -91, -90, -89, -88, -87, -86, -85, -84, -83, -82, -81, -80, -79, -78, -77, -76, -75, -74, -73, -72, -71, -70, -69, -68, -67, -66, -65, -64, -63, -62, -61, -60, -59, -58, -57, -56, -55, -54, -53, -52, -51, -50, -49, -48, -47, -46, -45, -44, -43, -42, -41, -40, -39, -38, -37, -36, -35, -34, -33, -32, -31, -30, -29, -28, -27, -26, -25, -24, -23, -22, -21, -20, -19, -18, -17, -16, -15, -14, -13, -12, -11, -10, -9, -8, -7, -6, -5, -4, -3, -2, -1};
+  int signal_percent[] = {0, 0, 0, 0, 0, 0, 4, 6, 8, 11, 13, 15, 17, 19, 21, 23, 26, 28, 30, 32, 34, 35, 37, 39, 41, 43, 45, 46, 48, 50, 52, 53, 55, 56, 58, 59, 61, 62, 64, 65, 67, 68, 69, 71, 72, 73, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 90, 91, 92, 93, 93, 94, 95, 95, 96, 96, 97, 97, 98, 98, 99, 99, 99, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100};
+
+  int signalpwr = WiFi.RSSI();
+  uint8_t signalLevel = 0;
+    
+  // RSSI > -30 dBm extra
+  // RSSI < – 55 dBm very good
+  // RSSI < – 67 dBm fairly good
+  // RSSI < – 70 dBm OK
+  // RSSI < – 80 dBm Poor
+  // RSSI < – 90 dBm Bad
+  
+// Pionowe kreseczki, szerokosc 11px
+  
+  // Czyscimy obszar pod kreseczkami
+  u8g2.setDrawColor(0);
+  u8g2.drawBox(xpwr,ypwr-10,11,11);
+  u8g2.setDrawColor(1);
+
+  // Rysujemy podstawy 1x1px pod kazdą kreseczką
+  u8g2.drawBox(xpwr,ypwr-1,1,1);
+  u8g2.drawBox(xpwr+2,ypwr-1,1,1);
+  u8g2.drawBox(xpwr+4,ypwr-1,1,1);
+  u8g2.drawBox(xpwr+6,ypwr-1,1,1);
+  u8g2.drawBox(xpwr+8,ypwr-1,1,1);
+  u8g2.drawBox(xpwr+10,ypwr-1,1,1);
+
+  // Rysujemy kreseczki
+ if (signalpwr > -90) {signalLevel = 1; u8g2.drawBox(xpwr,ypwr-2,1,1);}
+ if (signalpwr > -80) {signalLevel = 2; u8g2.drawBox(xpwr+2,ypwr-3,1,2);}
+ if (signalpwr > -70) {signalLevel = 3; u8g2.drawBox(xpwr+4,ypwr-4,1,3);}
+ if (signalpwr > -67) {signalLevel = 4; u8g2.drawBox(xpwr+6,ypwr-5,1,4);}
+ if (signalpwr > -55) {signalLevel = 5; u8g2.drawBox(xpwr+8,ypwr-6,1,5);}
+ if (signalpwr > -38) {signalLevel = 6; u8g2.drawBox(xpwr+10,ypwr-8,1,7);}
+
+
+  if (print == true) // Jesli flaga print =1 to wypisujemy na serialu sile sygnału w % i w skali 1-6
+  {
+    for (int j = 0; j < 100; j++) 
+    {
+      if (signal_dBM[j] == signalpwr) 
+      {
+        Serial.print("Sygnału WiFi: ");
+        Serial.print(signal_percent[j]);
+        Serial.print("%  Poziom: ");
+        Serial.println(signalLevel);
+        break;
+      }
+    }
+  }
+}
+
+
 // Obsługa wyświetlacza dla odtwarzanego strumienia radia internetowego
 void displayRadio() {
   if (displayMode == 0)
@@ -1884,14 +1961,14 @@ void displayRadio() {
     // Funkcja wyswietlania numeru Banku na dole ekranu
     u8g2.setFont(spleen6x12PL);
     char BankStr[8];  //Formatowanie informacji o Banku do postaci Bank 00
-    snprintf(BankStr, sizeof(BankStr), "Bank %02d", bank_nr);
+    snprintf(BankStr, sizeof(BankStr), "Bank%02d", bank_nr);
 
     u8g2.setDrawColor(0);
-    u8g2.setCursor(160, 63);  // pozycja napisu Bank 0x na dole ekranu
+    u8g2.setCursor(155, 63);  // pozycja napisu Bank 0x na dole ekranu
     u8g2.print(BankStr);
 
     u8g2.setDrawColor(1);
-    u8g2.drawBox(159, 54, 1, 12);  // dorysowujemy 1px pasek przed "Bank"
+    u8g2.drawBox(154, 54, 1, 12);  // dorysowujemy 1px pasek przed "Bank"
     
     //u8g2.drawRBox(225,1,30,16,4); // Rbox pod numerem stacji
     u8g2.drawRBox(1, 1, 21, 16, 4);  // Rbox pod numerem stacji
@@ -1916,7 +1993,7 @@ void displayRadio() {
 
     //Liczymy długość napisu StationString i dodajemy separator do przewijanego tekstu
     stationStringScroll = stationString + "      ";
-    stationStringWidth = u8g2.getUTF8Width(stationStringScroll.c_str());
+    stationStringWidth = stationStringScroll.length() * 6;
 
     u8g2.drawLine(0, 52, 255, 52);
     String displayString = sampleRateString.substring(1) + "Hz " + bitsPerSampleString + "bit " + bitrateString + "Kbps";
@@ -2718,19 +2795,19 @@ void updateTimer() {
   {
     if ((audio.isRunning() == true) && (displayMode == 0)) {
       if (mp3 == true) {
-        u8g2.drawStr(130, 63, " MP3");
+        u8g2.drawStr(130, 63, "MP3");
         //Serial.println("Gram MP3");
       }
       if (flac == true) {
-        u8g2.drawStr(130, 63, "FLAC");
+        u8g2.drawStr(130, 63, "FLC");
         //Serial.println("Gram FLAC");
       }
       if (aac == true) {
-        u8g2.drawStr(130, 63, " AAC");
+        u8g2.drawStr(130, 63, "AAC");
         //Serial.println("Gram AAC");
       }
       if (vorbis == true) {
-        u8g2.drawStr(130, 63, " VBR");
+        u8g2.drawStr(130, 63, "VBR");
         //Serial.println("Gram VBR");
       }
     }
@@ -2766,14 +2843,15 @@ void updateTimer() {
       }
       else if (displayMode == 1)
       {
+        int xtime = 0;
         u8g2.setFont(u8g2_font_7Segments_26x42_mn);
-        snprintf(timeString, sizeof(timeString), "%02d:%02d", timeinfo.tm_hour, timeinfo.tm_min);
-        u8g2.drawStr(58, 45, timeString);
+        snprintf(timeString, sizeof(timeString), "%2d:%02d", timeinfo.tm_hour, timeinfo.tm_min);
+        u8g2.drawStr(xtime+7, 45, timeString);
         
         
         u8g2.setFont(u8g2_font_fub14_tf);
         snprintf(timeString, sizeof(timeString), "%02d", timeinfo.tm_mday);
-        u8g2.drawStr(0,17, timeString);
+        u8g2.drawStr(203,17, timeString);
 
         String month = "";
         switch (timeinfo.tm_mon) {
@@ -2792,23 +2870,29 @@ void updateTimer() {
         }
         u8g2.setFont(spleen6x12PL);
         //snprintf(timeString, sizeof(timeString), "%02d", timeinfo.tm_mon + 1);
-        u8g2.drawStr(25,17, month.c_str());
+        u8g2.drawStr(232,14, month.c_str());
 
         String dayOfWeek = "";
         switch (timeinfo.tm_wday) {
-        case 0: dayOfWeek = "Sunday"; break;     
-        case 1: dayOfWeek = "Monday"; break;     
-        case 2: dayOfWeek = "Tuesday"; break;
+        case 0: dayOfWeek = " Sunday  "; break;     
+        case 1: dayOfWeek = " Monday  "; break;     
+        case 2: dayOfWeek = " Tuesday "; break;
         case 3: dayOfWeek = "Wednesday"; break;
-        case 4: dayOfWeek = "Thursday"; break;
-        case 5: dayOfWeek = "Friday"; break;
-        case 6: dayOfWeek = "Saturday"; break;
+        case 4: dayOfWeek = "Thursday "; break;
+        case 5: dayOfWeek = " Friday  "; break;
+        case 6: dayOfWeek = "Saturday "; break;
         }
-        u8g2.drawStr(1,30, dayOfWeek.c_str());
+
+        u8g2.drawRBox(198,20,58,15,3);  // Box z zaokraglonymi rogami, biały pod dniem tygodnia
+        u8g2.drawLine(198,20,256,20); // Linia separacyjna dzien miesiac / dzien tygodnia
+        u8g2.setDrawColor(0);
+        u8g2.drawStr(201,31, dayOfWeek.c_str());
+        u8g2.setDrawColor(1);
+        u8g2.drawRFrame(198,0,58,35,3); // Ramka na całosci kalendarza
 
 
         snprintf(timeString, sizeof(timeString), ":%02d", timeinfo.tm_sec);
-        u8g2.drawStr(218, 45, timeString);
+        u8g2.drawStr(xtime+163, 45, timeString);
       }
 
 
@@ -3441,6 +3525,8 @@ void setup() {
   //u8g2.setFont(DotMatrix13pl);
   //u8g2.setFont(u8g2_font_fub14_tf);
 
+  audioBuffer.changeMaxBlockSize(16384);
+
   //u8g2.drawStr(5, 32, "Internet Radio");
   //u8g2.sendBuffer();
   u8g2.setFont(spleen6x12PL);
@@ -3545,6 +3631,7 @@ void loop()
   button2.loop();         // Wykonuje pętlę dla obiektu button2 (sprawdza stan przycisku z enkodera 2)
   handleButtons();        // Wywołuje funkcję obsługującą przyciski i wykonuje odpowiednie akcje (np. zmiana opcji, wejście do menu)
   webServer();            // Uruchamiamy Web serwer
+  vTaskDelay(1);           // Krótkie opóźnienie, oddaje czas procesora innym zadaniom
  
 
   CLK_state1 = digitalRead(CLK_PIN1);  // Odczytanie aktualnego stanu pinu CLK enkodera 1
@@ -3623,7 +3710,7 @@ void loop()
       if (digitalRead(DT_PIN2) == HIGH) {
         station_nr--;
         if (station_nr < 1) {
-          station_nr = 1;
+          station_nr = stationsCount;//1;
         }
         Serial.print("Numer stacji do tyłu: ");
         Serial.println(station_nr);
@@ -3631,7 +3718,7 @@ void loop()
       } else {
         station_nr++;
         if (station_nr > stationsCount) {
-          station_nr = stationsCount;
+          station_nr = 1;//stationsCount;
         }
         Serial.print("Numer stacji do przodu: ");
         Serial.println(station_nr);
@@ -4007,8 +4094,7 @@ void loop()
       else if (ir_code == rcCmdGreen) {vuMeterMode = !vuMeterMode;} // Zmiana trybu VU meter z przerywanych kresek na ciągłe paski
       else if (ir_code == rcCmdDirect) {
         if (displayBrightness > 0) {displayBrightness = 0;} 
-        else {displayBrightness = 255;
-      }
+        else {displayBrightness = 255;}
         u8g2.sendF("ca", 0xC7, displayBrightness);
         }
       else if (ir_code == rcCmdSrc) 
@@ -4073,7 +4159,7 @@ void loop()
     if (screenRefresh == true)  // Dodatkowe odswiezanie ekranu aby usunąc "artefakty", pętla 3x 65ms VU metera
     {
       screenRefreshCount++;
-      if (screenRefreshCount > 3)
+      if (screenRefreshCount > 4)
       {
         screenRefresh = false;
         screenRefreshCount = 0;
@@ -4082,13 +4168,23 @@ void loop()
       }
 
     }
-    if (ActionNeedUpdateTime == true) 
+    if (ActionNeedUpdateTime == true) // Aktualizacja zegara co 1 sek. + status audio buffora
     {
       ActionNeedUpdateTime = false;
       updateTimer();
-      if (debugAudioBuffor == true) {bufforAudioInfo();}
-
+      
+      if (debugAudioBuffor == true) 
+      {
+        bufforAudioInfo();
+        drawSignalPower(194,63,1); // Narysuj wskaznik zasiegu WiFi X,Y z wydrukiem na terminalu     
+      }
+      else
+      {
+        if (displayMode == 0) {drawSignalPower(194,63,0);} // x, y, 0-bez wydruku mocy sygnału na terminalu , 1-z wydrukiem
+        if ((displayMode == 1) && (volumeMute == false)) {drawSignalPower(244,47,0);}   
+      }
     }
+
     displayRadioScroller();  // wykonujemy przewijanie tekstu station stringi przygotowujemy bufor ekranu
     
     if (volumeMute == true)   // informacja o wyciszeniu dzwieku
