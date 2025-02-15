@@ -1,5 +1,5 @@
 // ESP32 Radio Evo3
-// Source -> https://github.com/dzikakuna/ESP32_radio_evo3/tree/main/src/ESP32_radio_v2_evo3.14
+// Source -> https://github.com/dzikakuna/ESP32_radio_evo3/tree/main/src/ESP32_radio_v2_evo3.15
 // Based on project https://github.com/sarunia/ESP32_radio_player_v2
 
 
@@ -17,6 +17,10 @@
 #include <WiFi.h>
 //#include <ArduinoJson.h>          // Biblioteka do parsowania i tworzenia danych w formacie JSON, użyteczna do pracy z API
 #include <Time.h>  // Biblioteka do obsługi funkcji związanych z czasem, np. odczytu daty i godziny
+
+// Only for i2c Keyboard 
+// #include "Wire.h"
+// #include "I2CKeyPad8x8.h"
 
 
 #define softwareRev "v3.15"  // wersja oprogramowania
@@ -43,7 +47,7 @@
 #define SCREEN_WIDTH 256        // Szerokość ekranu w pikselach
 #define SCREEN_HEIGHT 64        // Wysokość ekranu w pikselach
 
-// Enkoder 1 - uzywany dla odtwarzacza
+// Enkoder 1 - uzwyany dla odtwarzacza
 #define CLK_PIN1 6              // Podłączenie z pinu 6 do CLK na enkoderze prawym
 #define DT_PIN1 5               // Podłączenie z pinu 5 do DT na enkoderze prawym
 #define SW_PIN1 4               // Podłączenie z pinu 4 do SW na enkoderze prawym (przycisk)
@@ -74,23 +78,27 @@
 #define STATIONS_URL14 "https://raw.githubusercontent.com/dzikakuna/ESP32_radio_streams/main/bank15.txt"  // Adres URL do pliku z listą stacji radiowych
 #define STATIONS_URL15 "https://raw.githubusercontent.com/dzikakuna/ESP32_radio_streams/main/bank16.txt"  // Adres URL do pliku z listą stacji radiowych
 
+
+// ----------- PILOT IR ----------- //
 // Przypisanie przycisków i adresu pilota w standardzie NEC 
 // pierwszy bajt adres, drugi komenda (B914 - adres B9 komenda 14)
+
 #define rcCmdVolumeUp   0x0009  // Głosnosc +
-#define rcCmdVolumeDown 0x0015  // Głośnosc -
+#define rcCmdVolumeDown 0x0015  // Głośność -
 #define rcCmdArrowRight 0x0043  // strzałka w prawo - nastepna stacja
 #define rcCmdArrowLeft  0x0040  // strzałka w lewo - poprzednia stacja  
 #define rcCmdArrowUp    0x0019  // strzałka w góre - lista stacji krok do gory
 #define rcCmdArrowDown  0x000D  // strzałka w dół - lista stacj krok na dół
+#define rcCmdBack       0xB985  // Przycisk powrotu
 #define rcCmdOk         0x0044  // Przycisk Ent - zatwierdzenie stacji
 #define rcCmdSrc        0x0046  // Przełączanie źródła radio, odtwarzacz
 #define rcCmdMute       0xB916  // Wyciszenie dzwieku
-#define rcCmdAud        0x0000  // Equalizer dzwieku
-#define rcCmdDirect     0x0007  // Janość ekranu, dwa tryby 1/16 lub pełna jasność     
-#define rcCmdBankMinus  0x0000  // Wyświetla wybór banku
+#define rcCmdAud        0x0007  // Equalizer dzwieku
+#define rcCmdDirect     0x0045  // Jasność ekranu, dwa tryby 1/16 lub pełna janość     
+#define rcCmdBankMinus  0xB90C  // Wyświetla wybór banku
 #define rcCmdBankPlus   0x0047  // Wyświetla wybór banku
-#define rcCmdRed        0x0045  // Przełącza ładowanie banku kartaSD - serwer GitHub w menu bank
-#define rcCmdGreen      0x0000  // VU wyłaczony, VU tryb 1, VU tryb 2, zegar
+#define rcCmdRed        0xB988  // Przełacza ładowanie banku kartaSD - serwer GitHub w menu bank
+#define rcCmdGreen      0xB992  // VU wyłaczony, VU tryb 1, VU tryb 2, zegar
 #define rcCmdKey0       0x0016  // Przycisk "0"
 #define rcCmdKey1       0x000C  // Przycisk "1"
 #define rcCmdKey2       0x0018  // Przycisk "2"
@@ -102,6 +110,33 @@
 #define rcCmdKey8       0x0052  // Przycisk "8"
 #define rcCmdKey9       0x004A  // Przycisk "9"
 
+bool cmdVolumeUp = false;    // Flaga Głosnosc +
+bool cmdVolumeDown = false;  // Flaga  Głośnosc -
+bool cmdArrowRight = false;// Flaga strzałka w prawo - nastepna stacja
+bool cmdArrowLeft = false;   // Flaga strzałka w lewo - poprzednia stacja  
+bool cmdArrowUp = false;     // Flaga strzałka w góre - lista stacji krok do gory
+bool cmdArrowDown = false;   // Flaga strzałka w dół - lista stacj krok na dół
+bool cmdBack = false;        // Flaga Przycisk powrotu
+bool cmdOk = false;          // Flaga Przycisk Ent - zatwierdzenie stacji
+bool cmdSrc = false;         // Flaga Przełączanie źródła radio, odtwarzacz
+bool cmdMute = false;        // Flaga Wyciszenie dzwieku
+bool cmdAud = false;         // Flaga Equalizer dzwieku
+bool cmdDirect = false;      // Flaga Janość ekranu, dwa tryby 1/16 lub pełna janość     
+bool cmdBankMinus = false;   // Flaga Wysweitla wybór banku
+bool cmdBankPlus = false;    // Flaga Wysweitla wybór banku
+bool cmdBankNetUpdate = false;         // Flaga Przełacza ładowanie banku kartaSD - serwer GitHub w menu bank
+bool cmdDisplayMode = false;       // Flaga VU wyłaczony, VU tryb 1, VU tryb 2, zegar
+bool cmdKey0 = false;        // Flaga Przycisk "0"
+bool cmdKey1 = false;        // Flaga Przycisk "1"
+bool cmdKey2 = false;        // Flaga Przycisk "2"
+bool cmdKey3 = false;        // Flaga Przycisk "3"
+bool cmdKey4 = false;        // Flaga Przycisk "4"
+bool cmdKey5 = false;        // Flaga Przycisk "5"
+bool cmdKey6 = false;        // Flaga Przycisk "6"
+bool cmdKey7 = false;        // Flaga Przycisk "7"
+bool cmdKey8 = false;        // Flaga Przycisk "8"
+bool cmdKey9 = false;        // Flaga Przycisk "9
+
 
 int currentSelection = 0;       // Numer aktualnego wyboru na ekranie OLED
 int firstVisibleLine = 0;       // Numer pierwszej widocznej linii na ekranie OLED
@@ -111,11 +146,6 @@ uint8_t bank_nr;                // Numer aktualnie wybranego banku stacji z list
 uint8_t previous_bank_nr = 0;   // Numer banku przed wejsciem do menu zmiany banku
 int bankFromBuffer = 0;         // Numer aktualnie wybranego banku stacji z listy do przywrócenia na ekran po bezczynności
 uint8_t screenRefreshCount = 0; // odświezeanie ekranu dla stajci bez statoin string
-
-//int button_S1 = 17;  // Przycisk S1 podłączony do pinu 17
-//int button_S2 = 18;  // Przycisk S2 podłączony do pinu 18
-//int button_S3 = 15;  // Przycisk S3 podłączony do pinu 15
-//int button_S4 = 16;  // Przycisk S4 podłączony do pinu 16
 
 
 int CLK_state1;                        // Aktualny stan CLK enkodera prawego
@@ -139,19 +169,25 @@ int buttonLongPressTime2 = 2000;       // Czas reakcji na długie nacisniecie en
 int buttonShortPressTime2 = 500;       // Czas rekacjinna krótkie nacisniecie enkodera 2
 int buttonSuperLongPressTime2 = 4000;  // Czas reakcji na super długie nacisniecie enkoder 2
 
-int gainLowPass =  3;
-int gainBandPass = 0;
-int gainHighPass = 12;
+int8_t toneLowValue = 0;               // Wartosc filtra dla tonow niskich
+int8_t toneMidValue = 0;               // Wartosc flitra dla tonow srednich
+int8_t toneHiValue = 0;                // Wartość filtra dla tonow wysokich
+uint8_t toneSelect = 1;                // Zmienna okreslająca, który filtr equalizera regulujemy
+//int8_t toneValue = 0;                  // Zmienna regulująca tony w zależnosci od pozycji w menu Equalizera
+//bool equalizerNeedSave = 0;
 
-//int toneLowValue = 0;               // Wartosc filtra dla tonow niskich
-//int toneMidValue = 0;               // Wartosc flitra dla tonow srednich
-//int toneHiValue = 0;                // Wartość filtra dla tonow wysokich
+
+uint8_t max_connection = 10;
+//uint8_t equalizerPresetSelect = 1;
+//int8_t toneLowValuePreset1 = 0;       // Wartosc filtra dla tonow niskich ustawienia numer 1
+//int8_t toneMidValuePreset1 = 0;       // Wartosc flitra dla tonow srednich ustawienia numer 1
+//int8_t toneHiValuePreset1 = 0;        // Wartość filtra dla tonow wysokich ustawienia numer 1
 
 uint8_t rcInputDigit1 = 0xFF;      // Pierwsza cyfra w przy wprowadzaniu numeru stacji z pilota
 uint8_t rcInputDigit2 = 0xFF;      // Druga cyfra w przy wprowadzaniu numeru stacji z pilota
 
 uint8_t displayMode = 0;          // Tryb wyswietlania displayRadio
-uint8_t displayBrightness = 0xFF;  // Janość wyswietlacza;
+uint8_t displayBrightness = 15;  // Jasność wyswietlacza;
 
 //const int maxVisibleLines = 5;  // Maksymalna liczba widocznych linii na ekranie OLED
 bool encoderButton1 = false;      // Flaga określająca, czy przycisk enkodera 1 został wciśnięty
@@ -162,7 +198,7 @@ bool isPlaying = false;           // Flaga określająca, czy obecnie trwa odtwa
 bool mp3 = false;                 // Flaga określająca, czy aktualny plik audio jest w formacie MP3
 bool flac = false;                // Flaga określająca, czy aktualny plik audio jest w formacie FLAC
 bool aac = false;                 // Flaga określająca, czy aktualny plik audio jest w formacie AAC
-bool vorbis = false;              // Flaga określająca, czy aktualny plik audio jest w formacie VORBIS
+bool vorbis = false;                 // Flaga określająca, czy aktualny plik audio jest w formacie VORBIS
 bool id3tag = false;              // Flaga określająca, czy plik audio posiada dane ID3
 bool timeDisplay = true;          // Flaga określająca kiedy pokazać czas na wyświetlaczu, domyślnie od razu po starcie
 bool listedStations = false;      // Flaga określająca czy na ekranie jest pokazana lista stacji do wyboru
@@ -172,24 +208,21 @@ bool bitratePresent = false;      // Flaga określająca, czy na serial terminal
 bool bankNetworkUpdate = false;   // Flaga wyboru aktualizacji banku z sieci lub karty SD - True aktulizacja z NETu
 bool bank1NetworkUpdate = false;  // Flaga wyboru aktualizacji banku z sieci lub karty SD - True aktulizacja z NETu
 bool bank2NetworkUpdate = false;  // Flaga wyboru aktualizacji banku z sieci lub karty SD
-bool volumeMute = false;          // Flaga okreslająca stan funkcji wyciszczenia - Mute
+bool volumeMute = false;          // Flaga okreslająca stan funkcji wyciszenia - Mute
 
 bool volumeSet = false;           // Flaga wejscia menu regulacji głosnosci na enkoderze 2
 bool vuMeterOn = true;            // Flaga właczajaca wskazniki VU
 bool vuMeterMode = false;         // tryb rysowania vuMeter
 bool action3Taken = false;        // Flaga Akcji 3 - załaczenia VU
 bool updateTimeAtStart = false;    // AKtualizacja czasu po pierwszym uruchomieniu
-bool ActionNeedUpdateTime = false; // Zmiena okresaljaca dla displayRadio potrzebe odczytu aktulizacji czasu
+bool ActionNeedUpdateTime = false; // Zmiena okreslajaca dla displayRadio potrzebe odczytu aktulizacji czasu
 bool debugAudioBuffor = false;
 bool screenRefresh = false;
 
-//bool button_1 = false;            // Flaga określająca stan przycisku 1
-//bool button_2 = false;            // Flaga określająca stan przycisku 2
-//bool button_3 = false;            // Flaga określająca stan przycisku 3
-//bool button_4 = false;            // Flaga określająca stan przycisku 4
+bool equalizerMenuEnable = false;       // Flaga wyswietlania menu Equalizera
 
 unsigned long debounceDelay = 300;    // Czas trwania debouncingu w milisekundach
-unsigned long displayTimeout = 6000;  // Czas wyświetlania komunikatu na ekranie w milisekundach
+unsigned long displayTimeout = 5000;  // Czas wyświetlania komunikatu na ekranie w milisekundach
 unsigned long displayStartTime = 0;   // Czas rozpoczęcia wyświetlania komunikatu
 unsigned long seconds = 0;            // Licznik sekund timera
 unsigned int PSRAM_lenght = MAX_STATIONS * (STATION_NAME_LENGTH) + MAX_STATIONS; // deklaracjia długości pamięci PSRAM
@@ -428,7 +461,7 @@ const uint8_t DotMatrix13pl[4602] U8G2_FONT_SECTION("DotMatrix13pl") =
   "\21A\21A\21A\21A\21A\21A\21\3\7\362\61\1\0\0\0\4\377\377\0";
 
 const uint8_t spleen6x12PL[2954] U8G2_FONT_SECTION("spleen6x12PL") =
-  "\340\1\3\2\3\4\1\3\4\6\14\0\375\10\376\11\377\1\225\3]\13m \7\346\361\363\237\0!\12"
+  "\340\1\3\2\3\4\1\3\4\6\14\0\375\10\376\11\377\1\225\3]\13f \7\346\361\363\237\0!\12"
   "\346\361#i\357`\316\0\42\14\346\361\3I\226dI\316/\0#\21\346\361\303I\64HI\226dI"
   "\64HIN\6$\22\346q\205CRK\302\61\311\222,I\206\60\247\0%\15\346\361cQK\32\246"
   "I\324\316\2&\17\346\361#Z\324f\213\22-Zr\42\0'\11\346\361#i\235\237\0(\13\346\361"
@@ -466,32 +499,32 @@ const uint8_t spleen6x12PL[2954] U8G2_FONT_SECTION("spleen6x12PL") =
   "\262hH[\0r\14\346\361S\207$K\322v&\0s\15\346\361S\207$\236\323d\310\311\0t\13"
   "\346\361\3i\70\246\315:\31u\20\346\361\23\263$K\262$K\262h\310\251\0v\16\346\361\23\263$"
   "K\262$\213\222\60gw\17\346\361\23\263$KZ\6\305\222\345T\0x\16\346\361\23\263$\213\266)"
-  "K\262\234\12y\21\346\361\23\263$K\262$K\262hH+C\4z\14\346\361\23\7\65l\34t*"
-  "\0{\14\346\361iiM\224\323\262\16\3|\10\346q\245\375;\5}\14\346\361\310iY\324\322\232N"
-  "\1~\12\346\361s\213\222D\347\10\177\7\346\361\363\237\0\200\6\341\311\243\0\201\6\341\311\243\0\202\6"
-  "\341\311\243\0\203\6\341\311\243\0\204\6\341\311\243\0\205\6\341\311\243\0\206\6\341\311\243\0\207\6\341\311"
-  "\243\0\210\6\341\311\243\0\211\6\341\311\243\0\212\6\341\311\243\0\213\6\341\311\243\0\214\16\346\361eC"
-  "\222\306sZ\31r\62\0\215\6\341\311\243\0\216\6\341\311\243\0\217\14\346qe\203T\354\232\16:\25"
-  "\220\6\341\311\243\0\221\6\341\311\243\0\222\6\341\311\243\0\223\6\341\311\243\0\224\6\341\311\243\0\225\6"
-  "\341\311\243\0\226\6\341\311\243\0\227\16\346\361eC\222\306sZ\31r\62\0\230\6\341\311\243\0\231\6"
-  "\341\311\243\0\232\6\341\311\243\0\233\6\341\311\243\0\234\16\346\361\205\71\66$\361\234&CN\6\235\6"
-  "\341\311\243\0\236\6\341\311\243\0\237\15\346\361\205\71\64\250a\343\240S\1\240\7\346\361\363\237\0\241\23"
-  "\346\361\3S\226dI\226\14J\226dI\26\306\71\0\242\21\346\361\23\302!\251%Y\222%\341\220\345"
-  "\24\0\243\14\346q\247-\231\230\306CN\5\244\22\346\361\3S\226dI\226\14J\226dI\26\346\4"
-  "\245\22\346\361\3S\226dI\226\14J\226dI\26\346\4\246\16\346\361eC\222\306sZ\31r\62\0"
-  "\247\17\346\361#Z\224\245Z\324\233\232E\231\4\250\11\346\361\3I\316\237\1\251\21\346\361\3C\22J"
-  "\211\22)\221bL\206\234\12\252\15\346\361#r\66\325vd\310\31\1\253\17\346\361\223\243$J\242\266"
-  "(\213r\42\0\254\14\346qe\203T\354\232\16:\25\255\10\346\361s\333y\3\256\21\346\361\3C\22"
-  "*\226d\261$c\62\344T\0\257\14\346qe\203\32vM\7\235\12\260\12\346\361#Z\324\246\363\11"
-  "\261\20\346\361S\347hH\262$\213\206\64\314\21\0\262\14\346\361#Z\224\206\305!\347\6\263\13\346\361"
-  "\3i\252\251\315:\31\264\11\346\361Ca\235\337\0\265\14\346\361\23\243\376i\251\346 \0\266\16\346\361"
-  "\205\71\66$\361\234&CN\6\267\10\346\361s\314y\4\270\11\346\361\363\207\64\14\1\271\20\346\361S"
-  "\347hH\262$\213\206\64\314\21\0\272\15\346\361#Z\324\233\16\15\71#\0\273\17\346\361\23\243,\312"
-  "\242\226(\211r\62\0\274\15\346\361\205\71\64\250a\343\240S\1\275\17\346\361\204j-\211\302\26\245\24"
-  "\26\207\0\276\21\346\361hQ\30'\222\64\206ZR\33\302\64\1\277\15\346\361#\71\64\250a\343\240S"
-  "\1\300\21\346\361\304\341\224%Y\62(Y\222%YN\5\301\21\346\361\205\341\224%Y\62(Y\222%"
-  "YN\5\302\22\346q\205I\66eI\226\14J\226dI\226S\1\303\23\346\361DI\242MY\222%"
-  "\203\222%Y\222\345T\0\304\21\346\361\324\241)K\262dP\262$K\262\234\12\305\16\346\361eC\222"
+  "K\262\234\12y\22\346\361\23\263$K\262$K\262hH\223!G\0z\14\346\361\23\7\65l\34t"
+  "*\0{\14\346\361iiM\224\323\262\16\3|\10\346q\245\375;\5}\14\346\361\310iY\324\322\232"
+  "N\1~\12\346\361s\213\222D\347\10\177\7\346\361\363\237\0\200\6\341\311\243\0\201\6\341\311\243\0\202"
+  "\6\341\311\243\0\203\6\341\311\243\0\204\6\341\311\243\0\205\6\341\311\243\0\206\6\341\311\243\0\207\6\341"
+  "\311\243\0\210\6\341\311\243\0\211\6\341\311\243\0\212\6\341\311\243\0\213\6\341\311\243\0\214\16\346\361e"
+  "C\222\306sZ\31r\62\0\215\6\341\311\243\0\216\6\341\311\243\0\217\14\346qe\203T\354\232\16:"
+  "\25\220\6\341\311\243\0\221\6\341\311\243\0\222\6\341\311\243\0\223\6\341\311\243\0\224\6\341\311\243\0\225"
+  "\6\341\311\243\0\226\6\341\311\243\0\227\16\346\361eC\222\306sZ\31r\62\0\230\6\341\311\243\0\231"
+  "\6\341\311\243\0\232\6\341\311\243\0\233\6\341\311\243\0\234\16\346\361\205\71\66$\361\234&CN\6\235"
+  "\6\341\311\243\0\236\6\341\311\243\0\237\15\346\361\205\71\64\250a\343\240S\1\240\7\346\361\363\237\0\241"
+  "\23\346\361\3S\226dI\226\14J\226dI\26\306\71\0\242\21\346\361\23\302!\251%Y\222%\341\220"
+  "\345\24\0\243\14\346q\247-\231\230\306CN\5\244\22\346\361\3S\226dI\226\14J\226dI\26\346"
+  "\4\245\22\346\361\3S\226dI\226\14J\226dI\26\346\4\246\16\346\361eC\222\306sZ\31r\62"
+  "\0\247\17\346\361#Z\224\245Z\324\233\232E\231\4\250\11\346\361\3I\316\237\1\251\21\346\361\3C\22"
+  "J\211\22)\221bL\206\234\12\252\15\346\361#r\66\325vd\310\31\1\253\17\346\361\223\243$J\242"
+  "\266(\213r\42\0\254\14\346qe\203T\354\232\16:\25\255\10\346\361s\333y\3\256\21\346\361\3C"
+  "\22*\226d\261$c\62\344T\0\257\14\346qe\203\32vM\7\235\12\260\12\346\361#Z\324\246\363"
+  "\11\261\20\346\361S\347hH\262$\213\206\64\314\21\0\262\14\346\361#Z\224\206\305!\347\6\263\13\346"
+  "\361\3i\252\251\315:\31\264\11\346\361Ca\235\337\0\265\14\346\361\23\243\376i\251\346 \0\266\16\346"
+  "\361\205\71\66$\361\234&CN\6\267\10\346\361s\314y\4\270\11\346\361\363\207\64\14\1\271\20\346\361"
+  "S\347hH\262$\213\206\64\314\21\0\272\15\346\361#Z\324\233\16\15\71#\0\273\17\346\361\23\243,"
+  "\312\242\226(\211r\62\0\274\15\346\361\205\71\64\250a\343\240S\1\275\17\346\361\204j-\211\302\26\245"
+  "\24\26\207\0\276\21\346\361hQ\30'\222\64\206ZR\33\302\64\1\277\15\346\361#\71\64\250a\343\240"
+  "S\1\300\21\346\361\304\341\224%Y\62(Y\222%YN\5\301\21\346\361\205\341\224%Y\62(Y\222"
+  "%YN\5\302\22\346q\205I\66eI\226\14J\226dI\226S\1\303\23\346\361DI\242MY\222"
+  "%\203\222%Y\222\345T\0\304\20\346\361S\347hH\262$\213\206\64\314\21\0\305\16\346\361eC\222"
   "\306sZ\31r\62\0\306\14\346\361eC\222\366<\344T\0\307\15\346\361\3C\222\366<di\30\2"
   "\310\17\346\361\304\341\220\244\351\20\245\361\220S\1\311\17\346\361\205\341\220\244\351\20\245\361\220S\1\312\20"
   "\346\361\3C\222\246C\224\226\207\64\314\21\0\313\17\346\361\324\241!I\323!J\343!\247\2\314\13\346"
@@ -505,22 +538,23 @@ const uint8_t spleen6x12PL[2954] U8G2_FONT_SECTION("spleen6x12PL") =
   "%Y\222%Y\222%Y\64\344T\0\334\22\346\361\324\221,\311\222,\311\222,\311\242!\247\2\335\17"
   "\346\361\205Y%K\262hH+CN\6\336\21\346\361\243\351\20eI\226dI\226\14QN\3\337\17"
   "\346\361\3Z\324%\213j\211\224$:\31\340\20\346q\305\71\64GC\222%Y\64\344T\0\341\20\346"
-  "\361\205\71\66GC\222%Y\64\344T\0\342\20\346q\205I\16\315\321\220dI\26\15\71\25\343\21\346"
-  "\361DI\242Cs\64$Y\222ECN\5\344\20\346\361\3I\16\315\321\220dI\26\15\71\25\345\20"
-  "\346q\205I\30\316\321\220dI\26\15\71\25\346\15\346\361Ca\70$i\363\220S\1\347\15\346\361S"
-  "\207$m\36\262\64\14\1\350\20\346q\305\71\64$Y\222%\203\22\17\71\25\351\20\346\361\205\71\66$"
-  "Y\222%\203\22\17\71\25\352\20\346\361S\207$K\262dP\342!\254C\0\353\21\346\361\3I\16\15"
-  "I\226d\311\240\304CN\5\354\13\346q\305\71\244v\325\311\0\355\13\346\361\205\71\246v\325\311\0\356"
-  "\14\346q\205I\16\251]u\62\0\357\14\346\361\3I\16\251]u\62\0\360\21\346q$a%\234\262"
-  "$K\262$\213v\62\0\361\21\346\361\205\71\64DY\222%Y\222%YN\5\362\20\346q\305\71\64"
-  "eI\226dI\26\355d\0\363\20\346\361\205\71\66eI\226dI\26\355d\0\364\20\346q\205I\16"
-  "MY\222%Y\222E;\31\365\21\346\361DI\242CS\226dI\226d\321N\6\366\20\346\361\3I"
-  "\16MY\222%Y\222E;\31\367\13\346\361\223sh\320\241\234\31\370\17\346\361\223\242)RZ\244$"
-  "\213\246\234\6\371\21\346q\305\71\222%Y\222%Y\222ECN\5\372\21\346\361\205\71\224%Y\222%"
-  "Y\222ECN\5\373\22\346q\205I\216dI\226dI\226d\321\220S\1\374\22\346\361\3I\216d"
-  "I\226dI\226d\321\220S\1\375\23\346\361\205\71\224%Y\222%Y\222ECZ\31\42\0\376\22\346"
-  "q\247\351\20eI\226dI\226\14Q\232\203\0\377\23\346\361\3I\216dI\226dI\226d\321\220V"
-  "\206\10\0\0\0\4\377\377\0";
+  "\361\205\71\66GC\222%Y\64\344T\0\342\11\346\361Ca\235\337\0\343\21\346\361DI\242Cs\64"
+  "$Y\222ECN\5\344\20\346\361\3I\16\315\321\220dI\26\15\71\25\345\20\346q\205I\30\316\321"
+  "\220dI\26\15\71\25\346\15\346\361Ca\70$i\363\220S\1\347\15\346\361S\207$m\36\262\64\14"
+  "\1\350\20\346q\305\71\64$Y\222%\203\22\17\71\25\351\20\346\361\205\71\66$Y\222%\203\22\17\71"
+  "\25\352\20\346\361S\207$K\262dP\342!\254C\0\353\21\346\361\3I\16\15I\226d\311\240\304C"
+  "N\5\354\13\346q\305\71\244v\325\311\0\355\13\346\361\205\71\246v\325\311\0\356\14\346q\205I\16\251"
+  "]u\62\0\357\14\346\361\3I\16\251]u\62\0\360\21\346q$a%\234\262$K\262$\213v\62"
+  "\0\361\21\346\361\205\71\64DY\222%Y\222%YN\5\362\20\346q\305\71\64eI\226dI\26\355"
+  "d\0\363\20\346\361\205\71\66eI\226dI\26\355d\0\364\20\346q\205I\16MY\222%Y\222E"
+  ";\31\365\21\346\361c\222\222HI\226dI\66\15\221N\4\366\20\346\361\3I\16MY\222%Y\222"
+  "E;\31\367\13\346\361\223sh\320\241\234\31\370\17\346\361\223\242)RZ\244$\213\246\234\6\371\21\346"
+  "q\305\71\222%Y\222%Y\222ECN\5\372\21\346\361\205\71\224%Y\222%Y\222ECN\5\373"
+  "\22\346q\205I\216dI\226dI\226d\321\220S\1\374\22\346\361\3I\216dI\226dI\226d\321"
+  "\220S\1\375\23\346\361\205\71\224%Y\222%Y\222ECZ\31\42\0\376\22\346q\247\351\20eI\226"
+  "dI\226\14Q\232\203\0\377\23\346\361\3I\216dI\226dI\226d\321\220V\206\10\0\0\0\4\377"
+  "\377\0";
+
 
 
 static unsigned char sdcard[] PROGMEM = {
@@ -668,7 +702,7 @@ static unsigned char notes[] PROGMEM = {
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-
+// Funkcja odwracania bitów MSL-LSB <-> LSB-MSB
 uint32_t reverse_bits(uint32_t inval, int bits)
 {
 if ( bits > 0 )
@@ -707,12 +741,8 @@ bool isAudioFile(const char *filename) {
   return (strcasecmp(ext, ".mp3") == 0 || strcasecmp(ext, ".wav") == 0 || strcasecmp(ext, ".flac") == 0);
 }
 
-/*===============    Definicja portu i deklaracje zmiennych do obsługi odbiornika IR    =============*/
-int recv_pin = 15;  // Pin odbiornika IR
-
-//volatile unsigned long pulse_start = 0;  // Czas rozpoczęcia impulsu
-//volatile unsigned long pulse_end = 0;    // Czas zakończenia impulsu
-//volatile bool pulse_ready = false;       // Flaga informująca, że impuls jest gotowy
+/*---------- Definicja portu i deklaracje zmiennych do obsługi odbiornika IR ----------*/
+int recv_pin = 15;  // GPIO odbiornika IR
 
 // zmienne obsługi  pilota IR
 volatile bool pulse_ready = false;  // Flaga sygnału gotowości
@@ -721,33 +751,68 @@ unsigned long pulse_end = 0;        // Czas końcowy impulsu
 unsigned long pulse_duration = 0;   // Czas trwania impulsu
 unsigned long pulse_duration_9ms = 0;   // Tylko do analizy - Czas trwania impulsu
 unsigned long pulse_duration_4_5ms = 0; // Tylko do analizy - Czas trwania impulsu
-unsigned long pulse_duration_690us = 0; // Tylko do analizy - Czas trwania impulsu
+unsigned long pulse_duration_560us = 0; // Tylko do analizy - Czas trwania impulsu
 unsigned long pulse_duration_1690us = 0; // Tylko do analizy - Czas trwania impulsu
 
-volatile bool pulse_ready9ms = false;  // Flaga sygnału gotowości
-volatile bool pulse_ready_low = false;  // Flaga sygnału gotowości
+volatile bool pulse_ready9ms = false;  // Flaga sygnału gotowości puls 9ms
+volatile bool pulse_ready_low = false;  // Flaga sygnału gotowości 
 unsigned long pulse_start_low = 0;      // Czas początkowy impulsu
 unsigned long pulse_end_low = 0;        // Czas końcowy impulsu
 unsigned long pulse_duration_low = 0;   // Czas trwania impulsu
 
-
 unsigned long ir_code = 0;  // Zmienna do przechowywania kodu IR
 int bit_count = 0;          // Licznik bitów w odebranym kodzie
 
-// Próg dla sygnałów czasowych pilota IR
-
-const int LEAD_HIGH = 9000;         // 9 ms sygnał wysoki (początkowy)
+// Progi przełączeń dla sygnałów czasowych pilota IR
+const int LEAD_HIGH = 9050;         // 9 ms sygnał wysoki (początkowy)
 const int LEAD_LOW = 4500;          // 4,5 ms sygnał niski (początkowy)
 const int TOLERANCE = 120;          // Tolerancja (w mikrosekundach)
 const int HIGH_THRESHOLD = 1690;    // Sygnał "1"
-const int LOW_THRESHOLD = 600;//560;      // Sygnał "0"
-
+const int LOW_THRESHOLD = 600;//560;// Sygnał "0"
 
 bool data_start_detected = false;  // Flaga dla sygnału wstępnego
-//volatile static unsigned long last_pulse_time = 0;
+bool rcInputDigitsMenuEnable = false;
+
+//================ Definicja portów i pinów dla klaiwatury numerycznej ===========================//
+
+const int keyboardPin = 9;  // wejscie klawiatury (ADC)
+
+// Debouncing przycisku
+//unsigned long lastButtonPress;
+//unsigned long keyboardDelay;
+//const unsigned long keyboardDebounceDelay = 100;
+unsigned long keyboardValue = 0;
+//unsigned long keyboardValue2 = 0;
+unsigned long keyboardLastSampleTime = 0;
+unsigned long keyboardSampleDelay = 50;
 
 
-// Funkcja do obsługi przycisków enkoderów, odpowiedzialna za debouncing i wykrywanie długiego naciśnięcia
+// Progi przełaczania ADC dla klawiatury matrycowej 5x3
+const int keyboardButtonThresholdTolerance = 10; 
+const int keyboardButtonNeutral = 4095;//2030; //1900;  // Pozycja 0
+const int keyboardButtonThreshold_0 = 2400                                                              ;  // Pozycja 0
+const int keyboardButtonThreshold_1 = 10;//330;  // Pozycja 1
+const int keyboardButtonThreshold_2 = 545;//560;  // Pozycja 2
+const int keyboardButtonThreshold_3 = 1390;//720;  // Pozycja 3
+const int keyboardButtonThreshold_4 = 1930;//870;  // Pozycja 4
+const int keyboardButtonThreshold_5 = 2300;//980;  // Pozycja 5
+const int keyboardButtonThreshold_6 = 385;//330;  // Pozycja 6
+const int keyboardButtonThreshold_7 = 875;//560;  // Pozycja 7
+const int keyboardButtonThreshold_8 = 1595;//720;  // Pozycja 8
+const int keyboardButtonThreshold_9 = 2065;//870;  // Pozycja 9
+const int keyboardButtonThreshold_Shift = 2485; // Shift
+const int keyboardButtonThreshold_Memory = 2185; // Memory
+const int keyboardButtonThreshold_Band = 1650; // Band
+const int keyboardButtonThreshold_Auto = 735; // Shift
+const int keyboardButtonThreshold_Scan = 1765; // Shift
+const int keyboardButtonThreshold_Mute = 1135; // Shift
+// Flagi do monitorowania stanu klawiatury
+bool keyboardButtonPressed = false; // Wcisnięcie klawisza
+bool debugKeyboard = false;         // Wyłącza wywoływanie funkcji i zostawia tylko wydruk pomiaru ADC
+
+
+// =========== Funkcja do obsługi przycisków enkoderów, debouncing i długiego naciśnięcia ==============//
+
 void handleButtons() {
   static unsigned long buttonPressTime1 = 0;  // Zmienna do przechowywania czasu naciśnięcia przycisku
   static bool isButton1Pressed = false;       // Flaga do śledzenia, czy przycisk jest wciśnięty
@@ -829,13 +894,16 @@ void handleButtons() {
       }
       */
 
-      if (millis() - buttonPressTime2 >= buttonLongPressTime2 && millis() - buttonPressTime2 >= buttonSuperLongPressTime2 && action3Taken == false) {
+      if (millis() - buttonPressTime2 >= buttonLongPressTime2 && millis() - buttonPressTime2 >= buttonSuperLongPressTime2 && action3Taken == false) 
+      {
         displayActive = true;
         displayStartTime = millis();
         volumeSet = false;
         timeDisplay = false;
         bankMenuEnable = false;
-        
+        debugKeyboard = !debugKeyboard;
+        Serial.print("Pomiar wartości ADC ON/OFF:");
+        Serial.println(debugKeyboard);
         //vuMeterMode = !vuMeterMode;
         //audio.setTone(6, -4, 6);
         action3Taken = true;
@@ -1102,7 +1170,8 @@ void changeStation() {
   u8g2.drawStr(34, 33, "Loading stream..."); // 8 znakow  x 11 szer
   u8g2.sendBuffer();
 
-  mp3 = flac = aac = vorbis = false;
+  //mp3 = flac = aac = false;
+   mp3 = flac = aac = vorbis = false;
   stationFromBuffer = station_nr;
   stationString.remove(0);  // Usunięcie wszystkich znaków z obiektu stationString
 
@@ -1161,7 +1230,7 @@ void changeStation() {
     Serial.println(stationUrl);
     
     u8g2.setFont(spleen6x12PL);  // wypisujemy jaki stream jakie stacji jest ładowany
-    u8g2.drawStr(34, 55, String(stationName.substring(0, 23)).c_str());
+    u8g2.drawStr(34, 55, String(stationName.substring(0, 22)).c_str());
     u8g2.sendBuffer();
     
     // Połącz z daną stacją
@@ -1188,7 +1257,8 @@ void changeStation() {
 void readSDStations() {
   stationsCount = 0;
   Serial.println("Plik Banu isnieje na karcie SD. Czytamy TYLKO z karty");
-  mp3 = flac = aac = vorbis = false;
+  //mp3 = flac = aac = false;
+   mp3 = flac = aac = vorbis = false;
   stationString.remove(0);  // Usunięcie wszystkich znaków z obiektu stationString
 
   // Tworzymy nazwę pliku banku
@@ -1491,13 +1561,15 @@ void audio_info(const char *info) {
     mp3 = false;
     vorbis = false;
   }
-
   if (String(info).indexOf("VORBISDecoder") != -1) {
     vorbis = true;
     aac = false;
     flac = false;
     mp3 = false;
   }
+
+
+
 }
 
 void audio_id3data(const char *info) {
@@ -1569,9 +1641,9 @@ void audio_showstreamtitle(const char *info) {
   if (currentOption == INTERNET_RADIO) {
 
     ActionNeedUpdateTime = true;
-    if ((volumeSet == false) && (bankMenuEnable == false) && (listedStations == false))
+    if ((volumeSet == false) && (bankMenuEnable == false) && (listedStations == false) && (rcInputDigitsMenuEnable == false) && (equalizerMenuEnable == false))
     {
-    screenRefresh = true;
+    //screenRefresh = true;
     displayRadio();
     }
   }
@@ -1633,12 +1705,14 @@ void displayMenu() {
 
 void printDirectoriesAndSavePaths(File dir, int numTabs, String currentPath) {
   directoryCount = 0;
-  while (true) {
-    // Otwórz kolejny plik w katalogu
+  // Przejrzyj wszystkie pliki w katalogu
+  while (true) 
+  {
     File entry = dir.openNextFile();
-    // Jeżeli nie ma więcej plików, przerwij pętlę
-    if (!entry) {
-      break;
+    
+    if (!entry) // Jeżeli nie ma więcej plików, przerwij pętlę
+    {
+      break; // Koniec plików
     }
 
     // Sprawdź, czy to katalog
@@ -1723,7 +1797,7 @@ void scrollDown()
     if (currentSelection >= firstVisibleLine + maxVisibleLines) 
     {
       firstVisibleLine++;
-    }								 
+    }
   }
     else
   {
@@ -1889,6 +1963,99 @@ void playFromSelectedFolder() {
 }
 
 
+void readVolumeFromSD() 
+{
+  // Sprawdź, czy karta SD jest dostępna
+  if (!SD.begin(47)) 
+  {
+    Serial.println("Nie można znaleźć karty SD. Ustawiam domyślną wartość.");
+    Serial.print("Wartość Volume domyślna:");
+    Serial.println(volumeValue);
+    return;
+  }
+  // Sprawdź, czy plik volume.txt istnieje
+  if (SD.exists("/volume.txt")) 
+  {
+    myFile = SD.open("/volume.txt");
+    if (myFile) 
+    {
+      volumeValue = myFile.parseInt();
+	  myFile.close();
+      
+      Serial.println("Wczytano volume.txt z karty SD");
+      Serial.print("Wartość Volume odczytany z SD: ");
+      Serial.println(volumeValue);    
+    } 
+	  else 
+	  {
+      Serial.println("Błąd podczas otwierania pliku volume.txt");
+    }
+  } 
+  else 
+  {
+    Serial.println("Plik volume.txt nie istnieje.");
+	Serial.print("Wartość Volume domyślna:");
+    Serial.println(volumeValue);    
+  }
+  audio.setVolume(volumeValue);  // zakres 0...21
+}
+
+
+
+
+
+void saveVolumeOnSD() 
+{
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_fub14_tf); // cziocnka 14x11
+  u8g2.drawStr(1, 33, "Saving volume settings"); // 8 znakow  x 11 szer
+  u8g2.sendBuffer();
+  
+  
+  
+  // Sprawdź, czy plik volume.txt istnieje
+  Serial.print("Volume");
+  Serial.println(volumeValue); 
+  
+  // Sprawdź, czy plik istnieje
+  if (SD.exists("/volume.txt")) 
+  {
+    Serial.println("Plik volume.txt już istnieje.");
+
+    // Otwórz plik do zapisu i nadpisz aktualną wartość flitrów equalizera
+    myFile = SD.open("/volume.txt", FILE_WRITE);
+    if (myFile) 
+	{
+      myFile.println(volumeValue);
+	  myFile.close();
+      Serial.println("Aktualizacja volume.txt na karcie SD.");
+    } 
+	else 
+	{
+      Serial.println("Błąd podczas otwierania pliku volume.txt.");
+    }
+  } 
+  else 
+  {
+    Serial.println("Plik volume.txt nie istnieje. Tworzenie...");
+
+    // Utwórz plik i zapisz w nim aktualną wartość głośności
+    myFile = SD.open("/volume.txt", FILE_WRITE);
+    if (myFile) 
+	{
+      myFile.println(volumeValue);
+      myFile.close();
+      Serial.println("Utworzono i zapisano volume.txt na karcie SD.");
+    } 
+	else 
+	{
+      Serial.println("Błąd podczas tworzenia pliku volume.txt.");
+    }
+  }
+}
+
+
+
 void drawSignalPower(uint8_t xpwr, uint8_t ypwr, bool print)
 {
   // Wartosci na podstawie ->  https://www.intuitibits.com/2016/03/23/dbm-to-percent-conversion/
@@ -1952,10 +2119,9 @@ void displayRadio() {
   {
     //Serial.println("debug---displayRadio inside void");
     u8g2.clearBuffer();
-
     u8g2.setFont(u8g2_font_fub14_tf);
     stationName = stationName.substring(0, 22);
-    u8g2.drawStr(27, 16, stationName.c_str());
+    u8g2.drawStr(26, 16, stationName.c_str());
     //u8g2.drawStr(0, 16, stationName.c_str());
 
     // Funkcja wyswietlania numeru Banku na dole ekranu
@@ -1964,7 +2130,7 @@ void displayRadio() {
     snprintf(BankStr, sizeof(BankStr), "Bank%02d", bank_nr);
 
     u8g2.setDrawColor(0);
-    u8g2.setCursor(155, 63);  // pozycja napisu Bank 0x na dole ekranu
+    u8g2.setCursor(155, 63);  //160 pozycja napisu Bank 0x na dole ekranu
     u8g2.print(BankStr);
 
     u8g2.setDrawColor(1);
@@ -1993,7 +2159,7 @@ void displayRadio() {
 
     //Liczymy długość napisu StationString i dodajemy separator do przewijanego tekstu
     stationStringScroll = stationString + "      ";
-    stationStringWidth = stationStringScroll.length() * 6;
+    stationStringWidth = u8g2.getUTF8Width(stationStringScroll.c_str());
 
     u8g2.drawLine(0, 52, 255, 52);
     String displayString = sampleRateString.substring(1) + "Hz " + bitsPerSampleString + "bit " + bitrateString + "Kbps";
@@ -2019,8 +2185,8 @@ void displayRadio() {
 
     //Liczymy długość napisu StationString i dodajemy separator do przewijanego tekstu
     stationStringScroll = String(StationStr) + "." + stationName + ", " + stationString + "      ";
-    stationStringWidth = u8g2.getUTF8Width(stationStringScroll.c_str());
-
+    //stationStringWidth = u8g2.getUTF8Width(stationStringScroll.c_str());
+    stationStringWidth = stationStringScroll.length() * 6;
    //u8g2.setCursor(0, 63);  // Pozycja numeru stacji na gorze ekranu S0xx
    // u8g2.print(String(StationStr) + "." + stationName + " - ");
     
@@ -2028,10 +2194,6 @@ void displayRadio() {
 
   }
 }
-
-
-
-
 
 // Funkcja przetwarza tekst, zamieniając polskie znaki diakrytyczne
 void processText(String &text) {
@@ -2052,21 +2214,21 @@ void processText(String &text) {
       case (char)0xC3:
         switch (text[i + 1]) {
           case (char)0xB1: text.setCharAt(i, 0xF1); break;  // Zamiana na "ń"
-          case (char)0xB3: text.setCharAt(i, 0xF3); break;  // Zamiana na "ó"
+          case (char)0xB3: text.setCharAt(i, 0xF3); break;  // Zamiana na "ó" Unicode UTF-8
           case (char)0xBA: text.setCharAt(i, 0x9F); break;  // Zamiana na "ź"
           case (char)0xBB: text.setCharAt(i, 0xAF); break;  // Zamiana na "Ż"
-          case (char)0x93: text.setCharAt(i, 0xD3); break;  // Zamiana na "Ó"
+          case (char)0x93: text.setCharAt(i, 0xD3); break;  // Zamiana na "Ó" Unicode UTF-8
         }
         text.remove(i + 1, 1);
         break;
       case (char)0xC4:
         switch (text[i + 1]) {
-          case (char)0x85: text.setCharAt(i, 0xB9); break;  // Zamiana na "ą"
-          case (char)0x99: text.setCharAt(i, 0xEA); break;  // Zamiana na "ę"
-          case (char)0x87: text.setCharAt(i, 0xE6); break;  // Zamiana na "ć"
-          case (char)0x84: text.setCharAt(i, 0xA5); break;  // Zamiana na "Ą"
-          case (char)0x98: text.setCharAt(i, 0xCA); break;  // Zamiana na "Ę"
-          case (char)0x86: text.setCharAt(i, 0xC6); break;  // Zamiana na "Ć"
+          case (char)0x85: text.setCharAt(i, 0xB9); break;  // Zamiana na "ą" Unicode UTF-8
+          case (char)0x99: text.setCharAt(i, 0xEA); break;  // Zamiana na "ę" Unicode UTF-8
+          case (char)0x87: text.setCharAt(i, 0xE6); break;  // Zamiana na "ć" Unicode UTF-8
+          case (char)0x84: text.setCharAt(i, 0xA5); break;  // Zamiana na "Ą" Unicode UTF-8
+          case (char)0x98: text.setCharAt(i, 0xCA); break;  // Zamiana na "Ę" Unicode UTF-8
+          case (char)0x86: text.setCharAt(i, 0xC6); break;  // Zamiana na "Ć" Unicode UTF-8
         }
         text.remove(i + 1, 1);
         break;
@@ -2074,7 +2236,7 @@ void processText(String &text) {
         switch (text[i + 1]) {
           case (char)0x82: text.setCharAt(i, 0xB3); break;  // Zamiana na "ł" Unicode UTF-8
           case (char)0x84: text.setCharAt(i, 0xF1); break;  // Zamiana na "ń" Unicode UTF-8
-          case (char)0x9B: text.setCharAt(i, 0x9C); break;  // Zamiana na "ź" Unicode UTF-8
+          case (char)0x9B: text.setCharAt(i, 0x9C); break;  // Zamiana na "ś" Unicode UTF-8
           case (char)0xBB: text.setCharAt(i, 0xAF); break;  // Zamiana na "Ż" Unicode UTF-8
           case (char)0xBC: text.setCharAt(i, 0xBF); break;  // Zamiana na "ż" Unicode UTF-8
           case (char)0x83: text.setCharAt(i, 0xD1); break;  // Zamiana na "Ń" Unicode UTF-8
@@ -2091,6 +2253,7 @@ void processText(String &text) {
 
 void rcInputKey(uint8_t i)
 {
+  rcInputDigitsMenuEnable = true;
   if (bankMenuEnable == true)
   {
     
@@ -2133,7 +2296,7 @@ void rcInputKey(uint8_t i)
     }
     else if ((rcInputDigit1 != 0xFF) && (rcInputDigit2 == 0xFF))  // jezeli tylko podalismy jedna cyfrę
     { 
-    station_nr = rcInputDigit1;
+      station_nr = rcInputDigit1;
     }
 
     if (station_nr > stationsCount)  // sprawdzamy czy wprowadzona wartość nie wykracza poza licze stacji w danym banku
@@ -2338,7 +2501,7 @@ void webServer() {
             // Web Page Heading
             client.println("<body><h1>ESP32 Internet Radio</h1>");
             client.println("<p></p>");
-            client.println("<p>You are listening: <b>" + String(stationName.substring(0, 23)) + "</b> - " + stationString + "</p>");
+            client.println("<p>You are listening: <b>" + String(stationName.substring(0, 22)) + "</b> - " + stationString + "</p>");
             client.println("<p>Station:<b>" + String(station_nr) + "</b>, bank: <b>" + String(bank_nr) + "</b></p>");
             client.println("<p>Volume: <b>" + String(volumeValue) + "</b></p>");
             client.println("<p></p>");
@@ -2779,7 +2942,7 @@ void updateTimerFlag() {
 void updateTimer() {
    // Wypełnij spacjami, aby wyczyścić pole
   //u8g2.drawStr(208, 63, "         "); // czyszczenie pola zegara
-  //u8g2.drawStr(128, 63, "    "); // czyszczenie pola FLAC/MP3/AAC/VORBIS
+  //u8g2.drawStr(128, 63, "    "); // czyszczenie pola FLAC/MP3/AAC
 
   // Zwiększ licznik sekund
   seconds++;
@@ -2808,7 +2971,7 @@ void updateTimer() {
       }
       if (vorbis == true) {
         u8g2.drawStr(130, 63, "VBR");
-        //Serial.println("Gram VBR");
+        //Serial.println("Gram AAC");
       }
     }
 
@@ -2825,7 +2988,8 @@ void updateTimer() {
       struct tm timeinfo;
 
       // Sprawdź, czy udało się pobrać czas z lokalnego zegara czasu rzeczywistego
-      if (!getLocalTime(&timeinfo)) {
+      if (!getLocalTime(&timeinfo, 5)) 
+      {
         // Wyświetl komunikat o niepowodzeniu w pobieraniu czasu
         Serial.println("Nie udało się uzyskać czasu");
         return;  // Zakończ funkcję, gdy nie udało się uzyskać czasu
@@ -2839,7 +3003,7 @@ void updateTimer() {
       { 
         snprintf(timeString, sizeof(timeString), "%02d:%02d:%02d", timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
         u8g2.setFont(spleen6x12PL);
-        u8g2.drawStr(208, 63, timeString);
+        u8g2.drawStr(208, 63, timeString); //201
       }
       else if (displayMode == 1)
       {
@@ -2849,7 +3013,7 @@ void updateTimer() {
         u8g2.drawStr(xtime+7, 45, timeString);
         
         
-        u8g2.setFont(u8g2_font_fub14_tf);
+        u8g2.setFont(u8g2_font_fub14_tf); // 14x11
         snprintf(timeString, sizeof(timeString), "%02d", timeinfo.tm_mday);
         u8g2.drawStr(203,17, timeString);
 
@@ -2869,7 +3033,6 @@ void updateTimer() {
         case 11: month = "DEC"; break;                                
         }
         u8g2.setFont(spleen6x12PL);
-        //snprintf(timeString, sizeof(timeString), "%02d", timeinfo.tm_mon + 1);
         u8g2.drawStr(232,14, month.c_str());
 
         String dayOfWeek = "";
@@ -2882,14 +3045,13 @@ void updateTimer() {
         case 5: dayOfWeek = " Friday  "; break;
         case 6: dayOfWeek = "Saturday "; break;
         }
-
+        
         u8g2.drawRBox(198,20,58,15,3);  // Box z zaokraglonymi rogami, biały pod dniem tygodnia
         u8g2.drawLine(198,20,256,20); // Linia separacyjna dzien miesiac / dzien tygodnia
         u8g2.setDrawColor(0);
         u8g2.drawStr(201,31, dayOfWeek.c_str());
         u8g2.setDrawColor(1);
         u8g2.drawRFrame(198,0,58,35,3); // Ramka na całosci kalendarza
-
 
         snprintf(timeString, sizeof(timeString), ":%02d", timeinfo.tm_sec);
         u8g2.drawStr(xtime+163, 45, timeString);
@@ -2963,6 +3125,126 @@ void saveStationOnSD() {
     }
   }
 }
+
+
+
+void saveEqualizerOnSD() 
+{
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_fub14_tf); // cziocnka 14x11
+  u8g2.drawStr(1, 33, "Saving equalizer settings"); // 8 znakow  x 11 szer
+  u8g2.sendBuffer();
+  
+  
+  // Sprawdź, czy plik equalizer.txt istnieje
+
+  Serial.print("Filtr High: ");
+  Serial.println(toneHiValue);
+  
+  Serial.print("Filtr Mid: ");
+  Serial.println(toneMidValue);
+  
+  Serial.print("Filtr Low: ");
+  Serial.println(toneLowValue);
+  
+  
+  // Sprawdź, czy plik istnieje
+  if (SD.exists("/equalizer.txt")) 
+  {
+    Serial.println("Plik equalizer.txt już istnieje.");
+
+    // Otwórz plik do zapisu i nadpisz aktualną wartość flitrów equalizera
+    myFile = SD.open("/equalizer.txt", FILE_WRITE);
+    if (myFile) 
+	  {
+      myFile.println(toneHiValue);
+	    myFile.println(toneMidValue);
+	    myFile.println(toneLowValue);
+      myFile.close();
+      Serial.println("Aktualizacja equalizer.txt na karcie SD.");
+    } 
+	  else 
+	  {
+      Serial.println("Błąd podczas otwierania pliku equalizer.txt.");
+    }
+  } 
+  else 
+  {
+    Serial.println("Plik equalizer.txt nie istnieje. Tworzenie...");
+
+    // Utwórz plik i zapisz w nim aktualną wartość filtrów equalizera
+    myFile = SD.open("/equalizer.txt", FILE_WRITE);
+    if (myFile) 
+	  {
+      myFile.println(toneHiValue);
+	    myFile.println(toneMidValue);
+	    myFile.println(toneLowValue);
+      myFile.close();
+      Serial.println("Utworzono i zapisano equalizer.txt na karcie SD.");
+    } 
+	  else 
+	  {
+      Serial.println("Błąd podczas tworzenia pliku equalizer.txt.");
+    }
+  }
+}
+
+
+
+void readEqualizerFromSD() 
+{
+  // Sprawdź, czy karta SD jest dostępna
+  if (!SD.begin(47)) 
+  {
+    Serial.println("Nie można znaleźć karty SD. Ustawiam domyślne wartości.");
+    toneHiValue = 0;  // Domyślna wartość filtra gdy brak karty SD
+	  toneMidValue = 0; // Domyślna wartość filtra gdy brak karty SD
+	  toneLowValue = 0; // Domyślna wartość filtra gdy brak karty SD
+    return;
+  }
+
+  // Sprawdź, czy plik equalizer.txt istnieje
+  if (SD.exists("/equalizer.txt")) 
+  {
+    myFile = SD.open("/equalizer.txt");
+    if (myFile) 
+    {
+      toneHiValue = myFile.parseInt();
+	    toneMidValue = myFile.parseInt();
+	    toneLowValue = myFile.parseInt();
+      myFile.close();
+      
+      Serial.println("Wczytano equalizer.txt z karty SD: ");
+	  
+      Serial.print("Filtr High equalizera odczytany z SD: ");
+      Serial.println(toneHiValue);
+    
+      Serial.print("Filtr Mid equalizera odczytany z SD: ");
+      Serial.println(toneMidValue);
+    
+      Serial.print("Filtr Low equalizera odczytany z SD: ");
+      Serial.println(toneLowValue);
+	  
+      
+    } 
+	  else 
+	  {
+      Serial.println("Błąd podczas otwierania pliku equalizer.txt.");
+    }
+  } 
+  else 
+  {
+    Serial.println("Plik equalizer.txt nie istnieje.");
+    toneHiValue = 12;  // Domyślna wartość filtra gdy brak karty SD
+	  toneMidValue = 0; // Domyślna wartość filtra gdy brak karty SD
+	  toneLowValue = 3; // Domyślna wartość filtra gdy brak karty SD
+  }
+  audio.setTone(toneLowValue, toneMidValue, toneHiValue); // Ustawiamy filtry - zakres regulacji -40 + 6dB jako int8_t ze znakiem
+}
+
+
+
+
 // Funkcja do odczytu danych stacji radiowej z karty SD
 void readStationFromSD() {
   // Sprawdź, czy karta SD jest dostępna
@@ -3107,8 +3389,175 @@ void displayRadioScroller() {
 //u8g2.sendBuffer();  
 }
 
-void bankMenuDisplay()
+void calcNec()
+{
+  //składamy kod pilota do postaci ADDR/CMD/CMD/ADDR aby miec 4 bajty
+  uint8_t CMD = (ir_code >> 8) & 0xFF; 
+  uint8_t ADDR = ir_code & 0xFF;        
+  ir_code =  ADDR;
+  ir_code = (ir_code << 8) | CMD;
+  ir_code = (ir_code << 8) | CMD;
+  ir_code = (ir_code << 8) | ADDR;
+  ADDR = (ir_code >> 24) & 0xFF;           // Pierwszy bajt
+  uint8_t IADDR = (ir_code >> 16) & 0xFF; // Drugi bajt (inwersja adresu)
+  CMD = (ir_code >> 8) & 0xFF;            // Trzeci bajt (komenda)
+  uint8_t ICMD = ir_code & 0xFF;          // Czwarty bajt (inwersja komendy)
+  
+  // Dorabiamy brakujące odwórcone bajty 
+  IADDR = IADDR ^ 0xFF;
+  ICMD = ICMD ^ 0xFF;
 
+  // Składamy bajty w jeden ciąg          
+  ir_code =  ICMD;
+  ir_code = (ir_code << 8) | ADDR;
+  ir_code = (ir_code << 8) | IADDR;
+  ir_code = (ir_code << 8) | CMD;
+  ir_code = reverse_bits(ir_code,32);     // rotacja bitów do porządku LSB-MSB jak w NEC        
+}
+
+
+//void handleKeyboard(void* pvParameters)
+void handleKeyboard()
+{
+//for (;;) {
+// vTaskDelay(50);
+  //int keyboardValue = analogRead(keyboardPin); // Odczyt wartości analogowej przycisku
+  uint8_t key = 17;
+  
+  
+  for (int i = 0; i < 32; i++)
+  {
+    keyboardValue = keyboardValue + analogRead(keyboardPin);
+  }
+  keyboardValue = keyboardValue / 32;  
+  
+
+  if (debugKeyboard == 1) 
+  { 
+    Serial.print("debug - ADC odczyt: ");
+    Serial.print(keyboardValue);
+    Serial.print(" flaga przycisk wcisniety:");
+    Serial.println(keyboardButtonPressed);
+  }
+  // Kasujemy flage nacisnietego przycisku tylko jesli nic nie jest wcisnięte
+  if (keyboardValue > keyboardButtonNeutral-keyboardButtonThresholdTolerance)
+  {  
+    keyboardButtonPressed = false;
+  }
+  // Jesli nic nie jest wcisniete i nic nie było nacisnięte analizujemy przycisk
+  if (keyboardValue < keyboardButtonNeutral-keyboardButtonThresholdTolerance)
+  {  
+    if (keyboardButtonPressed == false)
+    {
+      // Sprawdzamy stan klawiatury
+      if ((keyboardValue <= keyboardButtonThreshold_1 + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_1 - keyboardButtonThresholdTolerance ))
+      { key=1;keyboardButtonPressed = true;}
+
+      if ((keyboardValue <= keyboardButtonThreshold_2 + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_2 - keyboardButtonThresholdTolerance ))
+      { key=2;keyboardButtonPressed = true;}
+
+      if ((keyboardValue <= keyboardButtonThreshold_3 + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_3 - keyboardButtonThresholdTolerance ))
+      { key=3;keyboardButtonPressed = true;}
+
+      if ((keyboardValue <= keyboardButtonThreshold_4 + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_4 - keyboardButtonThresholdTolerance ))
+      { key=4;keyboardButtonPressed = true;}
+
+      if ((keyboardValue <= keyboardButtonThreshold_5 + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_5 - keyboardButtonThresholdTolerance ))
+      { key=5;keyboardButtonPressed = true;}
+
+      if ((keyboardValue <= keyboardButtonThreshold_6 + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_6 - keyboardButtonThresholdTolerance ))
+      { key=6;keyboardButtonPressed = true;}
+
+      if ((keyboardValue <= keyboardButtonThreshold_7 + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_7 - keyboardButtonThresholdTolerance ))
+      { key=7;keyboardButtonPressed = true;}
+
+      if ((keyboardValue <= keyboardButtonThreshold_8 + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_8 - keyboardButtonThresholdTolerance ))
+      { key=8;keyboardButtonPressed = true;}
+
+      if ((keyboardValue <= keyboardButtonThreshold_9 + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_9 - keyboardButtonThresholdTolerance ))
+      { key=9;keyboardButtonPressed = true;}
+
+      if ((keyboardValue <= keyboardButtonThreshold_0 + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_0 - keyboardButtonThresholdTolerance ))
+      { key=0;keyboardButtonPressed = true;}
+
+      if ((keyboardValue <= keyboardButtonThreshold_Memory + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_Memory - keyboardButtonThresholdTolerance ))
+      { key=11;keyboardButtonPressed = true;}
+
+      if ((keyboardValue <= keyboardButtonThreshold_Shift + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_Shift - keyboardButtonThresholdTolerance ))
+      { key=12;keyboardButtonPressed = true;}
+
+      if ((keyboardValue <= keyboardButtonThreshold_Auto + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_Auto - keyboardButtonThresholdTolerance ))
+      { key=13;keyboardButtonPressed = true;}
+
+      if ((keyboardValue <= keyboardButtonThreshold_Band + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_Band - keyboardButtonThresholdTolerance ))
+      { key=14;keyboardButtonPressed = true;}
+
+      if ((keyboardValue <= keyboardButtonThreshold_Mute + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_Mute - keyboardButtonThresholdTolerance ))
+      { key=15;keyboardButtonPressed = true;}
+
+      if ((keyboardValue <= keyboardButtonThreshold_Scan + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_Scan - keyboardButtonThresholdTolerance ))
+      { key=16;keyboardButtonPressed = true;}
+
+      if ((key < 17) && (keyboardButtonPressed == true))
+      {
+        Serial.print("ADC odczyt poprawny: ");
+        Serial.print(keyboardValue);
+        Serial.print(" przycisk: ");
+        Serial.println(key);
+        keyboardValue = 0;
+     
+        if ((debugKeyboard == false) && (key < 10)) // Dla przyciskoq 0-9 wykonujemy akcje jak na pilocie
+        { rcInputKey(key);}
+        else if ((debugKeyboard == false) && (key == 11)) // Przycisk Memory wywyłuje menu wyboru Banku
+        { bankMenuDisplay();}
+        else if ((debugKeyboard == false) && (key == 12)) // Przycisk Shift zatwierdza zmiane stacji, banku, działa jak "OK" na pilocie
+        { 
+          if (bankMenuEnable == true)
+          {
+            station_nr = 1;
+            fetchStationsFromServer();
+            bankMenuEnable = false;
+          }
+          changeStation(); 
+          displayRadio();
+          u8g2.sendBuffer();
+        }
+        else if ((debugKeyboard == false) && (key == 13)) // Przycisk Auto - przełaczanie tryb Zegar/Radio
+        { 
+          displayMode =!displayMode; 
+          displayRadio();
+          u8g2.sendBuffer();
+        }
+        else if ((debugKeyboard == false) && (key == 14)) // Przycisk Band udaje Back
+        {  
+          ir_code = rcCmdBack; // Udajemy komendy pilota
+          bit_count = 32;
+          calcNec();  // przeliczamy kod pilota na kod oryginalny pełen kod NEC
+        }
+        else if ((debugKeyboard == false) && (key == 15)) // Przycisk Mute
+        { 
+          ir_code = rcCmdMute; // Przypisujemy kod polecenia z pilota
+          bit_count = 32; // ustawiamy informacje, ze mamy pelen kod NEC do analizy 
+          calcNec();  // przeliczamy kod pilota na kod oryginalny pełen kod NEC     
+        }
+        else if ((debugKeyboard == false) && (key == 16)) // Przycisk Memory Scan - zmiana janości wyswietlacza - funkcja "Dimmer"
+        { 
+        displayBrightness =  displayBrightness + 15;
+        if (displayBrightness > 15){displayBrightness = 0;}
+        u8g2.sendF("ca", 0xC7, displayBrightness);
+        }
+
+
+        key=17; // Reset "KEY" do pozycji poza zakresem klawiatury
+      }
+    }
+  } 
+//  }
+// vTaskDelete(NULL);
+}
+
+
+void bankMenuDisplay()
 {
   displayStartTime = millis();
   Serial.println("debug--BankMenuDisplay");
@@ -3155,6 +3604,7 @@ void volumeDisplay()
   audio.setVolume(volumeValue);  // zakres 0...21
   String volumeValueStr = String(volumeValue);  // Zamiana liczby VOLUME na ciąg znaków
   u8g2.clearBuffer();
+  //u8g2.setFont(DotMatrix13pl);
   u8g2.setFont(u8g2_font_fub14_tf);
   u8g2.drawStr(65, 33, "VOLUME");
   u8g2.drawStr(163, 33, volumeValueStr.c_str());
@@ -3165,8 +3615,10 @@ void volumeDisplay()
 
 void volumeUp()
 {
+  volumeSet = true;
   timeDisplay = false;
   displayActive = true;
+  volumeMute = false;
   displayStartTime = millis();   
   volumeValue++;
 
@@ -3190,8 +3642,10 @@ void volumeUp()
 
 void volumeDown()
 {
+  volumeSet = true;
   timeDisplay = false;
   displayActive = true;
+  volumeMute = false;
   displayStartTime = millis();
   volumeValue--;
   if (volumeValue < 1) 
@@ -3308,7 +3762,7 @@ void IRAM_ATTR pulseISR()
       {
         ir_code = (ir_code << 1) | 0;  // Dodanie "0" do kodu IR
         bit_count++;
-        pulse_duration_690us = pulse_duration;
+        pulse_duration_560us = pulse_duration;
       }
 
       // Sprawdzenie, czy otrzymano pełny 32-bitowy kod IR
@@ -3329,7 +3783,6 @@ void IRAM_ATTR pulseISR()
         else
         {
           ir_code = 0; 
-          //ir_code=0xF0F0F0F0;  // Ustawiamy F0F0F0F0 jako flagę błednego kodu
           data_start_detected = false;
           //bit_count = 0;        
         }
@@ -3341,106 +3794,126 @@ void IRAM_ATTR pulseISR()
 }
 
 
-
-/*
-void IRAM_ATTR analyzePulseFromIR()
+void equalizerDisplay() // Funkcja rysująca menu 3-punktowego equalizera
 {
-  
-  //static bool data_start_detected = false;  // Flaga dla sygnału wstępnego
-  //static unsigned long last_pulse_time = 0;
-  
-  if (pulse_ready_low) // spradzamy czy jest stan niski przez 9ms - start ramki
-  {
-    pulse_duration_low = pulse_end_low - pulse_start_low;
-  
-    if (pulse_duration_low > (LEAD_HIGH - TOLERANCE) && pulse_duration_low < (LEAD_HIGH + TOLERANCE))
-    {
-      pulse_duration_9ms = pulse_duration_low; // przypisz czas trwania puslu Low do zmiennej puls 9ms
-      pulse_ready9ms = true; // flaga poprawnego wykrycia pulsu 9ms w granicach tolerancji
-    }
 
-  }
-  // Sprawdzenie, czy impuls jest gotowy do analizy
-  if ((pulse_ready== true) && (pulse_ready9ms = true))
-  {
-    pulse_ready = false;
-    pulse_ready9ms = false; // kasujemy flage wykrycia pulsu 9ms
-
-    // Obliczenie czasu trwania impulsu
-    pulse_duration = pulse_end - pulse_start;
-    //Serial.println(pulse_duration); odczyt dlugosci pulsow z pilota - debug
-    if (!data_start_detected)
-    {
+  displayStartTime = millis();  // Uaktulniamy czas dla funkcji auto-pwrotu z menu
+  equalizerMenuEnable = true;   // Ustawiamy flage menu equalizera
+  timeDisplay = false;          // Wyłaczamy zegar
+  displayActive = true;         // Wyswietlacz aktywny
+  
+  Serial.println("--Equalizer--");
+  Serial.print("Wartość tonów Niskich/Low:   ");
+  Serial.println(toneLowValue);
+  Serial.print("Wartość tonów Średnich/Mid:  ");
+  Serial.println(toneMidValue);
+  Serial.print("Wartość tonów Wysokich/High: ");
+  Serial.println(toneHiValue);
     
-      // Oczekiwanie na sygnał 4,5 ms wysoki
-      if (pulse_duration > (LEAD_HIGH - TOLERANCE) && pulse_duration < (LEAD_HIGH + TOLERANCE))
-      {
-       
-        // Początek sygnału: 9 ms niski
-        //Serial.println("Otrzymano początek sygnału (9 ms niski).");
-        //pulse_duration_9ms = pulse_duration; 
-      }
-      else if (pulse_duration > (LEAD_LOW - TOLERANCE) && pulse_duration < (LEAD_LOW + TOLERANCE))
-      {
-        
-        pulse_duration_4_5ms = pulse_duration;
-        // Początek sygnału: 4,5 ms wysoki
-        // Serial.println("Otrzymano początek sygnału (4,5 ms wysoki).");
-        data_start_detected = true;  // Ustawienie flagi po wykryciu sygnału wstępnego
-        bit_count = 0;               // Reset bit_count przed odebraniem danych
-        ir_code = 0;                 // Reset kodu IR przed odebraniem danych
-      }
-    }
-    else
-    {
-      // Sygnały dla bajtów (adresu ADDR, IADDR, komendy CMD, ICMD) zaczynają się po wstępnym sygnale
-      if (pulse_duration > (HIGH_THRESHOLD - TOLERANCE) && pulse_duration < (HIGH_THRESHOLD + TOLERANCE))
-      {
-        ir_code = (ir_code << 1) | 1;  // Dodanie "1" do kodu IR
-        bit_count++;
-        pulse_duration_1690us = pulse_duration;
-      }
-      else if (pulse_duration > (LOW_THRESHOLD - TOLERANCE) && pulse_duration < (LOW_THRESHOLD + TOLERANCE))
-      {
-        ir_code = (ir_code << 1) | 0;  // Dodanie "0" do kodu IR
-        bit_count++;
-        pulse_duration_690us = pulse_duration;
-      }
+  audio.setTone(toneLowValue, toneMidValue, toneHiValue); // Zakres regulacji -40 + 6dB jako int8_t ze znakiem
 
-      // Sprawdzenie, czy otrzymano pełny 32-bitowy kod IR
-      if (bit_count == 32)
-      {
-        // Rozbicie kodu na 4 bajty
-        uint8_t ADDR = (ir_code >> 24) & 0xFF;  // Pierwszy bajt
-        uint8_t IADDR = (ir_code >> 16) & 0xFF; // Drugi bajt (inwersja adresu)
-        uint8_t CMD = (ir_code >> 8) & 0xFF;    // Trzeci bajt (komenda)
-        uint8_t ICMD = ir_code & 0xFF;          // Czwarty bajt (inwersja komendy)
-
-        // Sprawdzenie poprawności (inwersja) bajtów adresu i komendy
-        if ((ADDR ^ IADDR) == 0xFF && (CMD ^ ICMD) == 0xFF)
-        {
-          data_start_detected = false;
-          //bit_count = 0;
-        }
-        else
-        {
-          ir_code = 0; 
-          //ir_code=0xF0F0F0F0;  // Ustawiamy F0F0F0F0 jako flagę błednego kodu
-          data_start_detected = false;
-          //bit_count = 0;        
-        }
-
-      }
-    }
+  u8g2.setDrawColor(1);
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_fub14_tf);
+  u8g2.drawStr(60, 14, "EQUALIZER");
+  //u8g2.drawStr(1, 14, "EQUALIZER");
+  u8g2.setFont(spleen6x12PL);
+  //u8g2.setCursor(138,12);
+  //u8g2.print("P1    P2    P3    P4");
+  uint8_t xTone;
+  uint8_t yTone;  
+  
+  // ---- Tony Wysokie ----
+  xTone=0; 
+  yTone=28;
+  u8g2.setCursor(xTone,yTone);
+  if (toneHiValue >= 0) {u8g2.print("High:  " + String(toneHiValue) + "dB");}  // Dla wartosci dodatnich piszemy normalnie
+  if ((toneHiValue < 0) && (toneHiValue >= -9)) {u8g2.print("High: " + String(toneHiValue) + "dB");}    // Dla wartosci ujemnych piszemy o 1 znak wczesniej
+  if ((toneHiValue < 0) && (toneHiValue < -9)) {u8g2.print("High:" + String(toneHiValue) + "dB");}    // Dla wartosci ujemnych ponizej -9 piszemy o 2 znak wczesniej
+  
+  xTone=20;
+  if (toneSelect == 1) 
+  { 
+    u8g2.drawBox(xTone+56,yTone-9,154,9); // Rysujemy biały pasek pod regulacją danego tonu  
+    u8g2.setDrawColor(0); 
+    u8g2.drawLine(xTone+57,yTone-5,xTone+208,yTone-5);
+    //u8g2.drawLine(xTone+57,yTone-4,xTone+208,yTone-4);
+    if (toneHiValue >= 0){ u8g2.drawRBox((5 * toneHiValue) + xTone + 138,yTone-7,10,5,1);}
+    if (toneHiValue < 0) { u8g2.drawRBox((2 * toneHiValue) + xTone + 138,yTone-7,10,5,1);}
+    u8g2.setDrawColor(1);
   }
-  runTime2 = esp_timer_get_time();
+  else 
+  {
+    u8g2.drawLine(xTone+57,yTone-5,xTone+208,yTone-5);
+    //u8g2.drawLine(xTone+57,yTone-4,xTone+208,yTone-4);
+    if (toneHiValue >= 0){ u8g2.drawRBox((5 * toneHiValue) + xTone + 138,yTone-7,10,5,1);}
+    if (toneHiValue < 0) { u8g2.drawRBox((2 * toneHiValue) + xTone + 138,yTone-7,10,5,1);}
+    //u8g2.drawRBox((3 * toneHiValue) + xTone + 178,yTone-7,10,6,1);
+  }
+
+  // ---- Tony średnie ----
+  xTone=0;
+  yTone=46;
+  u8g2.setCursor(xTone,yTone);
+  if (toneMidValue >= 0) {u8g2.print("Mid:   " + String(toneMidValue) + "dB");}  // Dla wartosci dodatnich piszemy normalnie
+  if ((toneMidValue < 0) && (toneMidValue >= -9)) {u8g2.print("Mid:  " + String(toneMidValue) + "dB");}
+  if ((toneMidValue < 0) && (toneMidValue < -9)) {u8g2.print("Mid: " + String(toneMidValue) + "dB");} 
+  
+  xTone=20;
+  if (toneSelect == 2) 
+  { 
+    u8g2.drawBox(xTone+56,yTone-9,154,9);
+    u8g2.setDrawColor(0);
+    u8g2.drawLine(xTone+57,yTone-5,xTone + 208,yTone-5);
+    //u8g2.drawLine(xTone+57,yTone-4,xTone + 208,yTone-4);
+    if (toneMidValue >= 0) { u8g2.drawRBox((5 * toneMidValue) + xTone + 138,yTone-7,10,5,1);}
+    if (toneMidValue < 0) { u8g2.drawRBox((2 * toneMidValue) + xTone + 138,yTone-7,10,5,1);}
+    u8g2.setDrawColor(1);
+  }
+  else
+  {
+    u8g2.drawLine(xTone+57,yTone-5,xTone + 208,yTone-5);
+    //u8g2.drawLine(xTone+57,yTone-4,xTone + 208,yTone-4);
+    if (toneMidValue >= 0) { u8g2.drawRBox((5 * toneMidValue) + xTone + 138,yTone-7,10,5,1);}
+    if (toneMidValue < 0)  { u8g2.drawRBox((2 * toneMidValue) + xTone + 138,yTone-7,10,5,1);}
+    //u8g2.drawRBox((3 * toneMidValue) + xTone + 138,yTone-7,10,6,1);
+  }
+
+
+  // Tony niskie
+  xTone=0; 
+  yTone=64;
+  u8g2.setCursor(xTone,yTone);
+  if (toneLowValue >= 0) { u8g2.print("Low:   " + String(toneLowValue) + "dB");}
+  if ((toneLowValue < 0) && (toneLowValue >= -9)) { u8g2.print("Low:  " + String(toneLowValue) + "dB");}
+  if ((toneLowValue < 0) && (toneLowValue < -9)) { u8g2.print("Low: " + String(toneLowValue) + "dB");}
+  xTone=20;
+  if (toneSelect == 3) 
+  { 
+    u8g2.drawBox(xTone+56,yTone-9,154,9);
+    u8g2.setDrawColor(0);
+    u8g2.drawLine(xTone + 57,yTone-5,xTone + 208,yTone-5);
+   // u8g2.drawLine(xTone + 57,yTone-4,xTone + 208,yTone-4); 
+    if ( toneLowValue >= 0 ) { u8g2.drawRBox((5 * toneLowValue) + xTone + 138,yTone-7,10,5,1);}
+    if ( toneLowValue < 0 )  { u8g2.drawRBox((2 * toneLowValue) + xTone + 138,yTone-7,10,5,1);}
+    u8g2.setDrawColor(1);
+  }
+  else
+  {
+    u8g2.drawLine(xTone + 57,yTone-5,xTone + 208,yTone-5);
+    //u8g2.drawLine(xTone + 57,yTone-4,xTone + 208,yTone-4);  
+    if ( toneLowValue >= 0 ) { u8g2.drawRBox((5 * toneLowValue) + xTone + 138,yTone-7,10,5,1);}
+    if ( toneLowValue < 0 )  { u8g2.drawRBox((2 * toneLowValue) + xTone + 138,yTone-7,10,5,1);}
+    //u8g2.drawRBox((3 * toneLowValue) + xTone + 138,yTone-7,10,6,1);
+  }
+  u8g2.sendBuffer(); 
 }
-*/
+
 
 void setup() {
   // Inicjalizuj komunikację szeregową (Serial)
   Serial.begin(115200);
-  Serial.println("debug---------START ESP32 Radio----------");
+  Serial.println("---------- START of ESP32 Network Radio -----------");
   
   psramData = (unsigned char *)ps_malloc(PSRAM_lenght * sizeof(unsigned char));
 
@@ -3455,7 +3928,11 @@ void setup() {
   } else {
     Serial.println("debug-- BLAD Pamieci PSRAM");
   }
+
+  //AudioBuffer(16384);
   
+  
+
   // Ustaw pin CS dla karty SD jako wyjście i ustaw go na wysoki stan
   pinMode(SD_CS, OUTPUT);
   digitalWrite(SD_CS, HIGH);
@@ -3474,13 +3951,16 @@ void setup() {
 
   attachInterrupt(digitalPinToInterrupt(recv_pin), pulseISR, CHANGE);
 
+  analogReadResolution(12); // Set ADC resolution to 12 bits (0-4095 range)
+  analogSetAttenuation(ADC_11db); // Set the ADC input attenuation (0dB for 0-3.3V range)
+  //analogSetSamples(16);
+  //adcAttachPin(keyboardPin)
   // Odczytaj początkowy stan pinu CLK enkodera
   prev_CLK_state1 = digitalRead(CLK_PIN1);
   prev_CLK_state2 = digitalRead(CLK_PIN2);
 
   audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);  // Konfiguruj pinout dla interfejsu I2S audio
   audio.setVolume(volumeValue);                  // Ustaw głośność na podstawie wartości zmiennej volumeValue w zakresie 0...21
-  audio.setTone(gainLowPass, gainBandPass, gainHighPass);
 
   // Inicjalizuj interfejs SPI wyświetlacza
   SPI.begin(SPI_SCK_OLED, SPI_MISO_OLED, SPI_MOSI_OLED);
@@ -3524,7 +4004,7 @@ void setup() {
   //u8g2.setFont(u8g2_font_ncenB18_tr);
   //u8g2.setFont(DotMatrix13pl);
   //u8g2.setFont(u8g2_font_fub14_tf);
-
+  
   audioBuffer.changeMaxBlockSize(16384);
 
   //u8g2.drawStr(5, 32, "Internet Radio");
@@ -3566,7 +4046,7 @@ void setup() {
     u8g2.setFont(spleen6x12PL);
     u8g2.clearBuffer();
     u8g2.drawStr(10, 25, "Time synchronization...");
-
+    u8g2.sendBuffer();
 
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer1, ntpServer2 );
     //Serial.print("Syncrhonizacja zegara - status:");
@@ -3588,6 +4068,10 @@ void setup() {
     //u8g2.drawStr(10, 10, "Bank ");
     //u8g2.drawStr(40, 10, String(bank_nr).c_str());
     //u8g2.drawStr(10, 23, "Loading station from:");
+    
+    readEqualizerFromSD(); // ODczytujemy ustawienia filtrów equalizera z karty SD 
+    readVolumeFromSD(); // odczytujemy nastawę głośnosci staertowej
+
     uint8_t temp_station_nr = station_nr; // Chowamy na chwile odczytaną stacje z karty SD
     fetchStationsFromServer();
     station_nr = temp_station_nr ;  // Przywracamy numer po odczycie stacji
@@ -3605,6 +4089,7 @@ void setup() {
      firstVisibleLine = currentSelection - 3;
     }
 
+    
 
   } 
   else 
@@ -3620,6 +4105,9 @@ void setup() {
   //wifiManager.setConfigPortalBlocking(true);
   //displayRadio();
   
+  //int kbd = xTaskCreatePinnedToCore(handleKeyboard, "handle_Keyboard", 10000, NULL, 1, NULL, 1);
+  //if(kbd) {Serial.println("Task kbd created...");} 
+  //else {Serial.printf("Couldn't create task %i", kbd);}
 }
 
 void loop() 
@@ -3632,7 +4120,15 @@ void loop()
   handleButtons();        // Wywołuje funkcję obsługującą przyciski i wykonuje odpowiednie akcje (np. zmiana opcji, wejście do menu)
   webServer();            // Uruchamiamy Web serwer
   vTaskDelay(1);           // Krótkie opóźnienie, oddaje czas procesora innym zadaniom
- 
+
+  // Odczyt stanu klawiatura ADC pod GPIO 9
+/*
+  if (millis() - keyboardLastSampleTime >= keyboardSampleDelay) // Sprawdzenie ADC - klawiatury 
+  {
+    keyboardLastSampleTime = millis();
+    handleKeyboard();
+  }
+*/
 
   CLK_state1 = digitalRead(CLK_PIN1);  // Odczytanie aktualnego stanu pinu CLK enkodera 1
   if (CLK_state1 != prev_CLK_state1 && CLK_state1 == HIGH) {
@@ -3678,21 +4174,6 @@ void loop()
         }
       }
       volumeDisplay();
-      /*
-      Serial.print("Wartość głośności: ");
-      Serial.println(volumeValue);
-      audio.setVolume(volumeValue);  // zakres 0...21
-
-      // Używamy funkcji String() do konwersji liczby na tekst
-      String volumeValueStr = String(volumeValue);  // Zamiana liczby VOLUME na ciąg znaków
-      u8g2.clearBuffer();
-      u8g2.setFont(u8g2_font_fub14_tf);
-      u8g2.drawStr(65, 33, "VOLUME");
-      u8g2.drawStr(163, 33, volumeValueStr.c_str());
-      u8g2.drawRFrame(21, 42, 214, 14, 3);             // Rysujmey ramke dla progress bara głosnosci
-      u8g2.drawRBox(23, 44, volumeValue * 10, 10, 2);  // Progress bar głosnosci
-      u8g2.sendBuffer();
-      */
     }
   }
   prev_CLK_state1 = CLK_state1;
@@ -3728,70 +4209,47 @@ void loop()
     } 
     else 
     {
-      if ((currentOption == INTERNET_RADIO) && (bankMenuEnable == false)) {
-
-        if (digitalRead(DT_PIN2) == HIGH) {
+      if ((currentOption == INTERNET_RADIO) && (bankMenuEnable == false)) 
+      {
+        if (digitalRead(DT_PIN2) == HIGH) 
+        {
           volumeValue--;
-          if (volumeValue < 1) {
+          if (volumeValue < 1) 
+          {
             volumeValue = 1;
           }
-
-        } else {
+        } 
+        else 
+        {
           volumeValue++;
-          if (volumeValue > 21) {
+          if (volumeValue > 21) 
+          {
             volumeValue = 21;
           }
         }
         volumeDisplay();
-        /*
-        Serial.print("Wartość głośności: ");
-        Serial.println(volumeValue);
-        audio.setVolume(volumeValue);  // zakres 0...21
-
-        // Używamy funkcji String() do konwersji liczby na tekst
-        String volumeValueStr = String(volumeValue);  // Zamiana liczby VOLUME na ciąg znaków
-        u8g2.clearBuffer();
-        u8g2.setFont(u8g2_font_fub14_tf);
-        u8g2.drawStr(65, 33, "VOLUME");
-        u8g2.drawStr(163, 33, volumeValueStr.c_str());
-        u8g2.drawRFrame(21, 42, 214, 14, 3);             // Rysujmey ramke dla progress bara głosnosci
-        u8g2.drawRBox(23, 44, volumeValue * 10, 10, 2);  // Progress bar głosnosci
-        u8g2.sendBuffer();
-        volumeSet = true;
-        */
       }
     }
 
     if (bankMenuEnable == true)  // Przewijanie listy banków stacji radiowych
     {
-      if (digitalRead(DT_PIN2) == HIGH) {
+      if (digitalRead(DT_PIN2) == HIGH) 
+      {
         bank_nr--;
-        if (bank_nr < 1) {
+        if (bank_nr < 1) 
+        {
           bank_nr = 16;
         }
-      } else {
+      } 
+      else 
+      {
         bank_nr++;
-        if (bank_nr > 16) {
+        if (bank_nr > 16) 
+        {
           bank_nr = 1;
         }
       }
-      // Używamy funkcji String() do konwersji liczby na tekst
-      
       bankMenuDisplay();
-      /*
-      String bankNrStr = String(bank_nr);  // Zamiana liczby na ciąg znaków
-
-      u8g2.clearBuffer();
-      u8g2.setFont(u8g2_font_fub14_tf);
-      u8g2.drawStr(80, 33, "BANK:");
-      u8g2.drawStr(145, 33, String(bank_nr).c_str());
-
-      u8g2.drawRFrame(21, 42, 214, 14, 3);                // Stała ramka z zaokrąglonymi rogami
-      u8g2.drawRBox((bank_nr * 13) + 10, 44, 15, 10, 2);  // wypełnienie o szerokosci
-      u8g2.sendBuffer();
-      x = 0;
-      volumeSet = false;
-      */
     }
   }
   prev_CLK_state2 = CLK_state2;
@@ -3799,6 +4257,32 @@ void loop()
 
   if (displayActive && (millis() - displayStartTime >= displayTimeout))  // Przywracanie poprzedniej zawartości ekranu po 6 sekundach
   {
+    Serial.print("rcInputDigitsMenuEnable: ");
+    Serial.println(rcInputDigitsMenuEnable);
+
+    Serial.print("Station nr: ");
+    Serial.println(station_nr);
+    
+    Serial.print("Bank nr: ");
+    Serial.println(bank_nr);
+
+    //-- Nie zmieniamy automatycznie Banku, funkcja wyłaczona --
+    // Sprawdzamy czy nie musimy zmienic banku lub stacji   
+    /*
+    if ((rcInputDigitsMenuEnable == true) && (bank_nr != previous_bank_nr)) 
+    {
+      station_nr = 1;
+      fetchStationsFromServer();
+      bankMenuEnable = false;
+      changeStation(); 
+    }
+    */
+
+    if ((rcInputDigitsMenuEnable == true) && (station_nr != stationFromBuffer))    
+    {
+     changeStation(); 
+    }
+    
     displayActive = false;
     timeDisplay = true;
     listedStations = false;
@@ -3806,12 +4290,17 @@ void loop()
     volumeSet = false;
     bankMenuEnable = false;
     bankNetworkUpdate = false;
+    equalizerMenuEnable = false;
+    rcInputDigitsMenuEnable = false;
     rcInputDigit1 = 0xFF; // czyscimy cyfre 1, flaga pustej zmiennej to FF
     rcInputDigit2 = 0xFF; // czyscimy cyfre 2, flaga pustej zmiennej to FF
     currentOption = INTERNET_RADIO;
+
     station_nr = stationFromBuffer;
     bank_nr = previous_bank_nr;
+    
     displayRadio();
+    u8g2.sendBuffer();
   }
 
   if ((currentOption == PLAY_FILES) && (button1.isPressed()) && (menuEnable == true)) {
@@ -3835,15 +4324,7 @@ void loop()
 
   if ((button1.isPressed()) && (bankMenuEnable == true)) {
     bankMenuEnable = false;
-    //previous_bank_nr = bank_nr;
     volumeSet = false;
-
-    //u8g2.setFont(spleen6x12PL);
-    //u8g2.clearBuffer();
-    //u8g2.drawStr(10, 10, "Bank ");
-    //u8g2.drawStr(40, 10, String(bank_nr).c_str());
-    //u8g2.drawStr(10, 23, "Update station from:");
-    //u8g2.sendBuffer();
     bankNetworkUpdate = true;
     currentSelection = 0;
     firstVisibleLine = 0;
@@ -3858,22 +4339,27 @@ void loop()
   }
 
 
-  if ((currentOption == INTERNET_RADIO) && (button2.isReleased()) && (listedStations == true)) {
+  if ((currentOption == INTERNET_RADIO) && (button2.isReleased()) && (listedStations == true)) 
+  {
     listedStations = false;
     volumeSet = false;
     changeStation();
   }
 
-  if ((currentOption == INTERNET_RADIO) && (button2.isPressed()) && (listedStations == false) && (bankMenuEnable == false)) {
+  if ((currentOption == INTERNET_RADIO) && (button2.isPressed()) && (listedStations == false) && (bankMenuEnable == false)) 
+  {
     displayStartTime = millis();
     timeDisplay = false;
     volumeSet = true;
     displayActive = true;
+    volumeDisplay();
 
+    /*
     Serial.println("debug--Wcisnieto enkoder 1 - Volume");
 
     Serial.print("Wartość głośności: ");
     Serial.println(volumeValue);
+            
     audio.setVolume(volumeValue);  // zakres 0...21
 
     // Używamy funkcji String() do konwersji liczby na tekst
@@ -3885,22 +4371,13 @@ void loop()
     u8g2.drawRFrame(21, 42, 214, 14, 3);             // Rysujmey ramke dla progress bara głosnosci
     u8g2.drawRBox(23, 44, volumeValue * 10, 10, 2);  // Progress bar głosnosci
     u8g2.sendBuffer();
+    */
   }
 
 
   if ((button2.isPressed()) && (bankMenuEnable == true)) {
     previous_bank_nr = bank_nr;
 
-
-    //u8g2.setFont(spleen6x12PL);
-    //u8g2.clearBuffer();
-    //u8g2.drawStr(10, 10, "Bank ");
-    //u8g2.drawStr(40, 10, String(bank_nr).c_str());
-    //u8g2.drawStr(10, 23, "Loading station from:");
-    //u8g2.sendBuffer();
-
-    //currentSelection = 0;
-    //firstVisibleLine = 0;
     station_nr = 1;
     currentOption = INTERNET_RADIO;
 
@@ -3909,9 +4386,6 @@ void loop()
     u8g2.clearBuffer();
     displayRadio();
 
-    //u8g2.setFont(u8g2_font_spleen6x12_mr);
-    //Serial.print("debug--wartość flagi Volume set:");
-    //Serial.println(volumeSet);
     volumeSet = false;
     bankMenuEnable = false;
   }
@@ -3928,7 +4402,7 @@ void loop()
   
   if (bit_count == 32) // sprawdzamy czy odczytalismy w przerwaniu pełne 32 bity kodu IR NEC
   {
-    if (ir_code != 0) // && (ir_code != 0xF0F0F0F0)
+    if (ir_code != 0) // sprawdzamy czy zmienna ir_code nie jest równa 0
     {
       detachInterrupt(recv_pin); // rozpinay przerwanie
       Serial.print("Kod NEC OK:");
@@ -3953,13 +4427,13 @@ void loop()
       Serial.print("  1690us:");
       Serial.print(pulse_duration_1690us);
       Serial.print("  690us:");
-      Serial.println(pulse_duration_690us);
+      Serial.println(pulse_duration_560us);
       
-      if (ir_code == rcCmdVolumeUp)      // V+
+      if (ir_code == rcCmdVolumeUp)      // Przycisk głośniej
       { 
         volumeUp();
       }
-      else if (ir_code == rcCmdVolumeDown) // V-
+      else if (ir_code == rcCmdVolumeDown) // Przycisk ciszej
       {  
         volumeDown();
       }
@@ -3974,6 +4448,17 @@ void loop()
           }
         bankMenuDisplay();
         }
+        else if (equalizerMenuEnable == true)
+        {
+          if (toneSelect == 1) {toneHiValue++;}
+          if (toneSelect == 2) {toneMidValue++;}
+          if (toneSelect == 3) {toneLowValue++;}
+          
+          if (toneHiValue > 12) {toneHiValue = 12;}
+          if (toneMidValue > 12) {toneMidValue = 12;}
+          if (toneLowValue > 12) {toneLowValue = 12;}
+          equalizerDisplay();
+        }     
         else
         {
           station_nr++;
@@ -3986,7 +4471,7 @@ void loop()
         u8g2.sendBuffer();
         }
       }
-      else if (ir_code == rcCmdArrowLeft) // Przycisk w dół
+      else if (ir_code == rcCmdArrowLeft) // Przycisk w lewo
       {  
         if (bankMenuEnable == true)
         {
@@ -3997,6 +4482,18 @@ void loop()
           }
         bankMenuDisplay();  
         }
+        else if (equalizerMenuEnable == true)
+        {
+          if (toneSelect == 1) {toneHiValue--;}
+          if (toneSelect == 2) {toneMidValue--;}
+          if (toneSelect == 3) {toneLowValue--;}
+          
+          if (toneHiValue < -40) {toneHiValue = -40;}
+          if (toneMidValue < -40) {toneMidValue = -40;}
+          if (toneLowValue < -40) {toneLowValue = -40;}
+         
+          equalizerDisplay();
+        }     
         else
         {        
           station_nr--;
@@ -4009,7 +4506,13 @@ void loop()
         u8g2.sendBuffer();
         }
       }
-      else if ((ir_code == rcCmdArrowUp) && (currentOption == INTERNET_RADIO) && (volumeSet == false))// Przycisk w góre
+      else if ((ir_code == rcCmdArrowUp) && (currentOption == INTERNET_RADIO) && (volumeSet == false) && (equalizerMenuEnable == true))
+      {
+        toneSelect--;
+        if (toneSelect < 1){toneSelect = 1;}
+        equalizerDisplay();
+      }
+      else if ((ir_code == rcCmdArrowUp) && (currentOption == INTERNET_RADIO) && (volumeSet == false) && (equalizerMenuEnable == false))// Przycisk w góre
       {  
         //Serial.println("debug--IR strzalka w gore");
         timeDisplay = false;
@@ -4026,7 +4529,13 @@ void loop()
         scrollUp(); 
         displayStations();
       }
-      else if ((ir_code == rcCmdArrowDown) && (currentOption == INTERNET_RADIO) && (volumeSet == false)) // Przycisk w dół
+      else if ((ir_code == rcCmdArrowDown) && (currentOption == INTERNET_RADIO) && (volumeSet == false) && (equalizerMenuEnable == true))
+      {
+        toneSelect++;
+        if (toneSelect > 3){toneSelect = 3;}
+        equalizerDisplay();
+      }
+      else if ((ir_code == rcCmdArrowDown) && (currentOption == INTERNET_RADIO) && (volumeSet == false) && (equalizerMenuEnable == false)) // Przycisk w dół
       {  
         timeDisplay = false;
         displayActive = true;
@@ -4042,29 +4551,34 @@ void loop()
         Serial.println(station_nr);
         scrollDown(); 
         displayStations();
-      }
+      }    
       else if (ir_code == rcCmdOk)
       {
         if (bankMenuEnable == true)
         {
-          //u8g2.setFont(spleen6x12PL);
-          //u8g2.clearBuffer();
-          //u8g2.drawStr(10, 10, "Bank ");
-          //u8g2.drawStr(40, 10, String(bank_nr).c_str());
-          //u8g2.drawStr(10, 23, "Loading station from:");
-          //u8g2.sendBuffer();
-          //currentSelection = 0;
-          //firstVisibleLine = 0;
           station_nr = 1;
           fetchStationsFromServer();
           bankMenuEnable = false;
         }
-      changeStation(); 
-      //previous_bank_nr = bank_nr;
-      //u8g2.clearBuffer();
-      displayRadio();
-      u8g2.sendBuffer();
-       
+        
+        if  (equalizerMenuEnable == true)
+        {
+          saveEqualizerOnSD();
+          //equalizerMenuEnable = false;
+        }
+        if (volumeSet == true)
+        {
+          saveVolumeOnSD();  
+          
+        }
+        if  ((equalizerMenuEnable == false) && (volumeSet == false)) // jesli nie zapisywalisci equlizer i glonosci to wywolujemy ponizsze funkcje
+        {
+          changeStation(); 
+          displayRadio();
+          u8g2.sendBuffer();
+        }
+        equalizerMenuEnable = false; // Kasujemy flage ustawiania equalizera
+        volumeSet = false; // Kasujemy flage ustawiania głośnosci
       } 
       else if (ir_code == rcCmdKey0) {rcInputKey(0);}
       else if (ir_code == rcCmdKey1) {rcInputKey(1);}     
@@ -4076,25 +4590,45 @@ void loop()
       else if (ir_code == rcCmdKey7) {rcInputKey(7);}     
       else if (ir_code == rcCmdKey8) {rcInputKey(8);}     
       else if (ir_code == rcCmdKey9) {rcInputKey(9);}
+      else if (ir_code == rcCmdBack) 
+      {  
+        // Zerujemy wszystkie flagi
+        displayActive = false;
+        timeDisplay = true;
+        listedStations = false;
+        menuEnable = false;
+        volumeSet = false;
+        bankMenuEnable = false;
+        bankNetworkUpdate = false;
+        rcInputDigitsMenuEnable = false;
+        equalizerMenuEnable = false;
+        rcInputDigit1 = 0xFF; // czyscimy cyfre 1, flaga pustej zmiennej to FF
+        rcInputDigit2 = 0xFF; // czyscimy cyfre 2, flaga pustej zmiennej to FF
+        currentOption = INTERNET_RADIO;
+
+        station_nr = stationFromBuffer;
+        bank_nr = previous_bank_nr;
+        
+        displayRadio();
+        u8g2.sendBuffer();
+      }
       else if (ir_code == rcCmdMute) 
       {
         volumeMute = !volumeMute;
         if (volumeMute == true)
         {
-          //volumeBufferValue = volumeValue;
           audio.setVolume(0);   
         }
         else if (volumeMute == false)
         {
-          //volumeBufferValue = volumeValue;
           audio.setVolume(volumeValue);   
         }
         displayRadio();
       }
       else if (ir_code == rcCmdGreen) {vuMeterMode = !vuMeterMode;} // Zmiana trybu VU meter z przerywanych kresek na ciągłe paski
       else if (ir_code == rcCmdDirect) {
-        if (displayBrightness > 0) {displayBrightness = 0;} 
-        else {displayBrightness = 255;}
+        displayBrightness =  displayBrightness + 15;
+        if (displayBrightness > 15){displayBrightness = 0;}
         u8g2.sendF("ca", 0xC7, displayBrightness);
         }
       else if (ir_code == rcCmdSrc) 
@@ -4106,16 +4640,34 @@ void loop()
       }
       else if (ir_code == rcCmdRed) 
       {
-        if (bankMenuEnable == true) 
+        if ((bankMenuEnable == true) && (equalizerMenuEnable == false))// flage można zmienic tylko bedąc w menu wyboru banku
         { 
           bankNetworkUpdate = !bankNetworkUpdate; // zmiana flagi czy aktualizujemy bank z sieci czy karty SD
-          bankMenuDisplay(); // flage można zmienic tylko bedąc w menu wyboru banku
+          bankMenuDisplay(); 
         }
+        if ((bankMenuEnable == false) && (equalizerMenuEnable == true))
+        {
+          toneHiValue = 0;
+          toneMidValue = 0;
+          toneLowValue = 0;    
+          equalizerDisplay();
+        }
+        if ((bankMenuEnable == false) && (equalizerMenuEnable == false) && (volumeSet == false))
+         { 
+          readEqualizerFromSD();
+          readVolumeFromSD();
+          equalizerDisplay();
+         }
+
       }
       else if (ir_code == rcCmdDirect) {vuMeterOn = !vuMeterOn; displayRadio();}     
       else if (ir_code == rcCmdBankMinus) {bankMenuDisplay();}
       else if (ir_code == rcCmdBankPlus) {bankMenuDisplay();}
-      else if (ir_code == rcCmdAud){debugAudioBuffor = !debugAudioBuffor;}
+      else if (ir_code == rcCmdAud)
+      {//debugAudioBuffor = !debugAudioBuffor;
+        //toneSelect = 1;
+        equalizerDisplay();
+      }
       else
       {
         Serial.println("Inny przycisk");
@@ -4123,8 +4675,15 @@ void loop()
     }
     else
     {
-      Serial.println("Błąd - kod NEC jest niepoprawny!");
-
+      Serial.println("Błąd - kod pilota NEC jest niepoprawny!");
+      Serial.print("debug-- puls 9ms:");
+      Serial.print(pulse_duration_9ms);
+      Serial.print("  4.5ms:");
+      Serial.print(pulse_duration_4_5ms);
+      Serial.print("  1690us:");
+      Serial.print(pulse_duration_1690us);
+      Serial.print("  690us:");
+      Serial.println(pulse_duration_560us);
     }
     ir_code = 0;
     bit_count = 0;
@@ -4134,22 +4693,9 @@ void loop()
     
     attachInterrupt(digitalPinToInterrupt(recv_pin), pulseISR, CHANGE);
     Serial.print("debug-- Kontrola stosu:");
-    Serial.println(uxTaskGetStackHighWaterMark(NULL));
+    Serial.print(uxTaskGetStackHighWaterMark(NULL));
+    Serial.println(" DWORD");
   }
- 
-/*
-  if (screenRefresh == true)
-  {
-    if (millis() - screenRefreshTime > 200)
-    {
-      screenRefresh = false;
-      displayRadio();
-      u8g2.sendBuffer(); 
-    }  
-  } 
-*/
-
-
 
   // petla millis oswiezajaca scroller i VU metter, dodatkowo sprawdza flage odswiezenia czasu zegara na ekranie OLED
   if ((millis() - scrollingStationStringTime > scrollingRefresh) && (bankMenuEnable == false) && (menuEnable == false) && (listedStations == false) && (timeDisplay == true)) 
@@ -4184,24 +4730,24 @@ void loop()
         if ((displayMode == 1) && (volumeMute == false)) {drawSignalPower(244,47,0);}   
       }
     }
-
+    
     displayRadioScroller();  // wykonujemy przewijanie tekstu station stringi przygotowujemy bufor ekranu
     
-    if (volumeMute == true)   // informacja o wyciszeniu dzwieku
+    if (volumeMute == true)   // Obsługa wyciszenia dzwięku, wprowadzamy napis MUTE na ekran
     {   
       u8g2.setDrawColor(0);
-      u8g2.drawStr(0,48, "> MUTED <");
+      if (displayMode == 0) {u8g2.drawStr(0,48, "> MUTED <");}
+      if (displayMode == 1) {u8g2.drawStr(200,47, "> MUTED <");}
       u8g2.setDrawColor(1);
     } 
     
-
-
     if (vuMeterOn == true && flac == false && displayActive == false && displayMode == 0)  //&& (flac == false) jesli właczone sa wskazniki VU to rysujemy, dla stacji FLAC wyłaczamy aby nie bylo cieci w streamie
     {
       vuMeter();
     }
-    //displayRadio();
+ 
     u8g2.sendBuffer();  // rysujemy zawartosc Scrollera i VU jesli właczone
+   
   }
   runTime2 = esp_timer_get_time();
   runTime = runTime2 - runTime1;  
