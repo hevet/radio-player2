@@ -4123,6 +4123,7 @@ void setup() {
     station_nr = temp_station_nr ;  // Przywracamy numer po odczycie stacji
     
     changeStation();
+    u8g2.sendF("ca", 0xC7, displayBrightness);
 
     //getWeatherData();
     //wifiManager.startWebPortal();
@@ -4152,7 +4153,6 @@ void setup() {
   //int kbd = xTaskCreatePinnedToCore(handleKeyboard, "handle_Keyboard", 2000, NULL, 1, NULL, 1);
   //if(kbd) {Serial.println("Task kbd created...");} 
   //else {Serial.printf("Couldn't create task %i", kbd);}
-  u8g2.sendF("ca", 0xC7, displayBrightness);
 }
 
 void loop() 
