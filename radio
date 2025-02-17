@@ -3870,9 +3870,10 @@ void equalizerDisplay() // Funkcja rysująca menu 3-punktowego equalizera
   xTone=0; 
   yTone=28;
   u8g2.setCursor(xTone,yTone);
-  if (toneHiValue >= 0) {u8g2.print("High:  " + String(toneHiValue) + "dB");}  // Dla wartosci dodatnich piszemy normalnie
-  if ((toneHiValue < 0) && (toneHiValue >= -9)) {u8g2.print("High: " + String(toneHiValue) + "dB");}    // Dla wartosci ujemnych piszemy o 1 znak wczesniej
-  if ((toneHiValue < 0) && (toneHiValue < -9)) {u8g2.print("High:" + String(toneHiValue) + "dB");}    // Dla wartosci ujemnych ponizej -9 piszemy o 2 znak wczesniej
+  if (toneHiValue >= 10) {u8g2.print("High: " + String(toneHiValue) + "dB");}  // piszemy o 1 znak wczesniej
+  if ((toneHiValue >= 0) && (toneHiValue <= 9)) {u8g2.print("High:  " + String(toneHiValue) + "dB");}  // piszemy o 2 znak wczesniej
+  if ((toneHiValue < 0) && (toneHiValue >= -9)) {u8g2.print("High: " + String(toneHiValue) + "dB");}    // piszemy o 1 znak wczesniej
+  if (toneHiValue <= -10) {u8g2.print("High:" + String(toneHiValue) + "dB");}  // piszemy normalnie
   
   xTone=20;
   if (toneSelect == 1) 
@@ -3898,9 +3899,10 @@ void equalizerDisplay() // Funkcja rysująca menu 3-punktowego equalizera
   xTone=0;
   yTone=46;
   u8g2.setCursor(xTone,yTone);
-  if (toneMidValue >= 0) {u8g2.print("Mid:   " + String(toneMidValue) + "dB");}  // Dla wartosci dodatnich piszemy normalnie
+  if (toneMidValue >= 10) {u8g2.print("Mid:  " + String(toneMidValue) + "dB");}  // Dla wartosci dodatnich piszemy normalnie
+  if ((toneMidValue >= 0) && (toneMidValue <= 9)) {u8g2.print("Mid:   " + String(toneMidValue) + "dB");}
   if ((toneMidValue < 0) && (toneMidValue >= -9)) {u8g2.print("Mid:  " + String(toneMidValue) + "dB");}
-  if ((toneMidValue < 0) && (toneMidValue < -9)) {u8g2.print("Mid: " + String(toneMidValue) + "dB");} 
+  if (toneMidValue <= -10) {u8g2.print("Mid: " + String(toneMidValue) + "dB");}
   
   xTone=20;
   if (toneSelect == 2) 
@@ -3927,9 +3929,10 @@ void equalizerDisplay() // Funkcja rysująca menu 3-punktowego equalizera
   xTone=0; 
   yTone=64;
   u8g2.setCursor(xTone,yTone);
-  if (toneLowValue >= 0) { u8g2.print("Low:   " + String(toneLowValue) + "dB");}
+  if (toneLowValue >= 10) { u8g2.print("Low:  " + String(toneLowValue) + "dB");}
+  if ((toneLowValue >= 0) && (toneLowValue <= 9)) { u8g2.print("Low:   " + String(toneLowValue) + "dB");}
   if ((toneLowValue < 0) && (toneLowValue >= -9)) { u8g2.print("Low:  " + String(toneLowValue) + "dB");}
-  if ((toneLowValue < 0) && (toneLowValue < -9)) { u8g2.print("Low: " + String(toneLowValue) + "dB");}
+  if (toneLowValue <= -10) { u8g2.print("Low: " + String(toneLowValue) + "dB");}
   xTone=20;
   if (toneSelect == 3) 
   { 
