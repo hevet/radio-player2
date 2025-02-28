@@ -111,8 +111,8 @@
 #define rcCmdKey8       0xB908  // Przycisk "8"
 #define rcCmdKey9       0xB909  // Przycisk "9"
 
-bool cmdVolumeUp = false;    // Flaga Głosnosc +
-bool cmdVolumeDown = false;  // Flaga  Głośnosc -
+bool cmdVolumeUp = false;    // Flaga Głośność +
+bool cmdVolumeDown = false;  // Flaga Głośność -
 bool cmdArrowRight = false;  // Flaga strzałka w prawo - nastepna stacja
 bool cmdArrowLeft = false;   // Flaga strzałka w lewo - poprzednia stacja  
 bool cmdArrowUp = false;     // Flaga strzałka w góre - lista stacji krok do gory
@@ -146,7 +146,7 @@ int stationFromBuffer = 0;      // Numer stacji radiowej przechowywanej w buforz
 uint8_t bank_nr;                // Numer aktualnie wybranego banku stacji z listy
 uint8_t previous_bank_nr = 0;   // Numer banku przed wejsciem do menu zmiany banku
 int bankFromBuffer = 0;         // Numer aktualnie wybranego banku stacji z listy do przywrócenia na ekran po bezczynności
-uint8_t screenRefreshCount = 0; // odświezeanie ekranu dla stajci bez statoin string
+uint8_t screenRefreshCount = 0; // odświezeanie ekranu dla stacji bez statoin string
 
 
 int CLK_state1;                        // Aktualny stan CLK enkodera prawego
@@ -171,11 +171,16 @@ int buttonLongPressTime2 = 2000;       // Czas reakcji na długie nacisniecie en
 int buttonShortPressTime2 = 500;       // Czas rekacjinna krótkie nacisniecie enkodera 2
 int buttonSuperLongPressTime2 = 4000;  // Czas reakcji na super długie nacisniecie enkoder 2
 
+int displayDimmerTimeCounter = 0;      // Zmienna inkrementowana w przerwaniu timera 2 do przyciemniania wyswietlacza
+uint8_t dimmerDisplayBrightness = 2;   // Wartość przyciemnienia wyswietlacza po czasie niekatywnosci tunera
+uint16_t displayDimmerSetTime = 10;    // Czas po jakim nastąpi przyciemnienie wyswietlacza, liczony w sekundach
+
+
 int8_t toneLowValue = 0;               // Wartosc filtra dla tonow niskich
 int8_t toneMidValue = 0;               // Wartosc flitra dla tonow srednich
 int8_t toneHiValue = 0;                // Wartość filtra dla tonow wysokich
 uint8_t toneSelect = 1;                // Zmienna okreslająca, który filtr equalizera regulujemy
-//int8_t toneValue = 0;                  // Zmienna regulująca tony w zależnosci od pozycji w menu Equalizera
+//int8_t toneValue = 0;                // Zmienna regulująca tony w zależnosci od pozycji w menu Equalizera
 //bool equalizerNeedSave = 0;
 
 
@@ -186,19 +191,20 @@ uint8_t rcInputDigit1 = 0xFF;      // Pierwsza cyfra w przy wprowadzaniu numeru 
 uint8_t rcInputDigit2 = 0xFF;      // Druga cyfra w przy wprowadzaniu numeru stacji z pilota
 
 uint8_t displayMode = 0;          // Tryb wyswietlania displayRadio
-uint8_t displayBrightness = 0;   // Jasność wyswietlacza;
+uint8_t displayBrightness = 15;    // Jasność wyswietlacza;
 
 //const int maxVisibleLines = 5;  // Maksymalna liczba widocznych linii na ekranie OLED
 bool encoderButton1 = false;      // Flaga określająca, czy przycisk enkodera 1 został wciśnięty
 bool encoderButton2 = false;      // Flaga określająca, czy przycisk enkodera 2 został wciśnięty
-bool encoderFunctionOrder = true;// Flaga okreslająca kolejność funkcji enkodera 2
+bool encoderFunctionOrder = true; // Flaga okreslająca kolejność funkcji enkodera 2
 bool fileEnd = false;             // Flaga sygnalizująca koniec odtwarzania pliku audio
 bool displayActive = false;       // Flaga określająca, czy wyświetlacz jest aktywny
 bool isPlaying = false;           // Flaga określająca, czy obecnie trwa odtwarzanie
 bool mp3 = false;                 // Flaga określająca, czy aktualny plik audio jest w formacie MP3
 bool flac = false;                // Flaga określająca, czy aktualny plik audio jest w formacie FLAC
 bool aac = false;                 // Flaga określająca, czy aktualny plik audio jest w formacie AAC
-bool vorbis = false;                 // Flaga określająca, czy aktualny plik audio jest w formacie VORBIS
+bool vorbis = false;              // Flaga określająca, czy aktualny plik audio jest w formacie VORBIS
+bool opus = false;                // Flaga określająca, czy aktualny plik audio jest w formacie OPUS
 bool id3tag = false;              // Flaga określająca, czy plik audio posiada dane ID3
 bool timeDisplay = true;          // Flaga określająca kiedy pokazać czas na wyświetlaczu, domyślnie od razu po starcie
 bool listedStations = false;      // Flaga określająca czy na ekranie jest pokazana lista stacji do wyboru
@@ -218,6 +224,7 @@ bool updateTimeAtStart = false;    // AKtualizacja czasu po pierwszym uruchomien
 bool ActionNeedUpdateTime = false; // Zmiena okresaljaca dla displayRadio potrzebe odczytu aktulizacji czasu
 bool debugAudioBuffor = false;
 bool screenRefresh = false;
+bool displayDimmerOn = true;
 
 bool equalizerMenuEnable = false;       // Flaga wyswietlania menu Equalizera
 
@@ -237,12 +244,12 @@ uint8_t vuMeterL;                          // Wartosc VU dla L kanału zakres 0-
 uint8_t vuMeterR;                          // Wartosc VU dla R kanału zakres 0-255
 
 unsigned long scrollingStationStringTime;  // Czas do odswiezania scorllingu
-unsigned long scrollingRefresh = 30;       // Czas przewijania tekstu i odswiezania VUmetera
+unsigned long scrollingRefresh = 50;       // Czas przewijania tekstu i odswiezania VUmetera
 
-uint16_t stationStringScrollWidth;               //szerokosc Stringu nazwy stacji
+uint16_t stationStringScrollWidth;         //szerokosc Stringu nazwy stacji
 uint16_t xPositionStationString = 0;       // Pozycja początkowa dla przewijania tekstu StationString
-uint16_t offset;                          // Zminnna offsetu dla funkcji Scrollera - przewijania streamtitle na ekranie OLED
-unsigned char * psramData;                  // zmienna do trzymania danych stacji w pamieci PSRAM
+uint16_t offset;                           // Zminnna offsetu dla funkcji Scrollera - przewijania streamtitle na ekranie OLED
+unsigned char * psramData;                 // zmienna do trzymania danych stacji w pamieci PSRAM
 
 // Serwer Web
 unsigned long currentTime = millis();
@@ -294,9 +301,9 @@ ezButton button2(SW_PIN2);  // Utworzenie obiektu przycisku z enkodera 1 ezButto
 Audio audio;                // Obiekt do obsługi funkcji związanych z dźwiękiem i audio
 AudioBuffer audioBuffer;
 Ticker timer1;              // Timer do updateTimer co 1s
-//Ticker timer2;                            // Timer do getWeatherData co 60s
-//Ticker timer3;                            // Timer do przełączania wyświetlania danych pogodoych w ostatniej linii co 10s
-WiFiClient client;  // Obiekt do obsługi połączenia WiFi dla klienta HTTP
+Ticker timer2;              // Timer do getWeatherData co 60s
+//Ticker timer3;            // Timer do przełączania wyświetlania danych pogodoych w ostatniej linii co 10s
+WiFiClient client;          // Obiekt do obsługi połączenia WiFi dla klienta HTTP
 
 char stations[MAX_STATIONS][STATION_NAME_LENGTH + 1];  // Tablica przechowująca linki do stacji radiowych (jedna na stację) +1 dla terminatora null
 
@@ -974,7 +981,7 @@ void changeStation()
   u8g2.drawStr(34, 33, "Loading stream..."); // 8 znakow  x 11 szer
   u8g2.sendBuffer();
 
-  mp3 = flac = aac = vorbis = false;
+  mp3 = flac = aac = vorbis = opus = false;
   stationFromBuffer = station_nr;
   stationString.remove(0);  // Usunięcie wszystkich znaków z obiektu stationString
   stationNameStream.remove(0);
@@ -1062,7 +1069,7 @@ void readSDStations() {
   stationsCount = 0;
   Serial.println("Plik Banu isnieje na karcie SD. Czytamy TYLKO z karty");
   //mp3 = flac = aac = false;
-   mp3 = flac = aac = vorbis = false;
+   mp3 = flac = aac = vorbis = opus = false;
   stationString.remove(0);  // Usunięcie wszystkich znaków z obiektu stationString
 
   // Tworzymy nazwę pliku banku
@@ -1350,6 +1357,7 @@ void audio_info(const char *info) {
     flac = false;
     aac = false;
     vorbis = false;
+    opus = false;
   }
 
   if (String(info).indexOf("FLACDecoder") != -1) {
@@ -1357,6 +1365,7 @@ void audio_info(const char *info) {
     mp3 = false;
     aac = false;
     vorbis = false;
+    opus = false;
   }
 
   if (String(info).indexOf("AACDecoder") != -1) {
@@ -1364,8 +1373,18 @@ void audio_info(const char *info) {
     flac = false;
     mp3 = false;
     vorbis = false;
+    opus = false;
   }
   if (String(info).indexOf("VORBISDecoder") != -1) {
+    vorbis = true;
+    aac = false;
+    flac = false;
+    mp3 = false;
+    opus = false;
+  }
+
+  if (String(info).indexOf("OPUSDecoder") != -1) {
+    opus = true;
     vorbis = true;
     aac = false;
     flac = false;
@@ -1914,7 +1933,10 @@ void drawSignalPower(uint8_t xpwr, uint8_t ypwr, bool print)
         Serial.print("Sygnału WiFi: ");
         Serial.print(signal_percent[j]);
         Serial.print("%  Poziom: ");
-        Serial.println(signalLevel);
+        Serial.print(signalLevel);
+        Serial.print("   dBm: ");
+        Serial.println(signalpwr);
+        
         break;
       }
     }
@@ -1928,7 +1950,8 @@ void displayRadio()
   if (displayMode == 0)
   {
     u8g2.clearBuffer();
-    u8g2.setFont(u8g2_font_fub14_tf);
+    if (encoderFunctionOrder== true) {u8g2.setFont(u8g2_font_fub14_tf);}
+    if (encoderFunctionOrder== false) {u8g2.setFont(DotMatrix13pl);}
     stationName = stationName.substring(0, 23);
     u8g2.drawStr(24, 16, stationName.c_str());
     u8g2.drawRBox(1, 1, 21, 16, 4);  // Rbox pod numerem stacji
@@ -2618,7 +2641,8 @@ void handleEncoder1Rotation() {
 }
 
 // Obsługa kółka enkodera 2 podczas dzialania odtwarzacza plików
-void handleEncoder2Rotation() {
+void handleEncoder2Rotation() 
+{
   CLK_state2 = digitalRead(CLK_PIN2);
   if (CLK_state2 != prev_CLK_state2 && CLK_state2 == HIGH) {
     folderIndex = currentSelection;  // Zaktualizuj indeks folderu
@@ -2805,6 +2829,10 @@ void updateTimer() {
         u8g2.drawStr(133, 63, "VRB");
         //Serial.println("Gram VORBIS");
       }
+      if (opus == true) {
+        u8g2.drawStr(133, 63, "OPS");
+        //Serial.println("Gram OPUS");
+      }
     }
 
     if ((currentOption == PLAY_FILES) && (bitratePresent == true)) {
@@ -2815,7 +2843,7 @@ void updateTimer() {
       u8g2.sendBuffer();
     }
 
-    //if ((currentOption == INTERNET_RADIO) && ((mp3 == true) || (flac == true) || (aac == true) || (vorbis == true))) 
+    //if ((currentOption == INTERNET_RADIO) && ((mp3 == true) || (flac == true) || (aac == true) || (vorbis == true)|| (opus == true))) 
     if ((currentOption == INTERNET_RADIO) && (timeDisplay == true) && (audio.isRunning() == true))
     {
       // Struktura przechowująca informacje o czasie
@@ -3832,6 +3860,104 @@ void basicInfo()
   u8g2.sendBuffer();
 }
 
+void audioProcessing(void *p)
+{
+  while (true) {
+  audio.loop();
+  vTaskDelay(1 / portTICK_PERIOD_MS); // Opóźnienie 1 milisekundy
+  }
+}
+
+void recoveryModeCheck()
+{
+  if (digitalRead(SW_PIN2) == 0)
+  {
+    uint8_t recoveryMode = 0;
+    int16_t recoveryModeCounter = 0;
+    u8g2.clearBuffer();
+    u8g2.setFont(spleen6x12PL);
+    u8g2.drawStr(1,14, "RECOVERY / RESET MODE - release encoder");
+    u8g2.sendBuffer();
+    delay(2000);
+    while (digitalRead(SW_PIN2) == 0) {;}  
+    u8g2.drawStr(1,14, "Please Wait...                         ");
+    u8g2.sendBuffer();
+    delay(1000);
+    u8g2.clearBuffer();
+     
+    while (true)
+    {
+      u8g2.drawStr(1,14, "<< -- Rotate Enckoder -- >>           ");
+      CLK_state2 = digitalRead(CLK_PIN2);
+      if (CLK_state2 != prev_CLK_state2 && CLK_state2 == HIGH)  // Sprawdzenie, czy stan CLK zmienił się na wysoki
+      {
+        if (digitalRead(DT_PIN2) == HIGH) 
+        {
+          u8g2.drawStr(1,28, ">> RESET BANK=1, STATION=1 <<");
+          u8g2.drawStr(1,42, "   RESET WIFI SSID, PASSWD   ");  
+          recoveryMode = 0;
+        }
+        else
+        {
+          u8g2.drawStr(1,28, "   RESET BANK=1, STATION=1   ");
+          u8g2.drawStr(1,42, ">> RESET WIFI SSID, PASSWD <<");      
+          recoveryMode = 1;
+        }
+      }
+      u8g2.sendBuffer();
+      
+      if (digitalRead(SW_PIN2) == 0)
+      {
+        if (recoveryMode == 0)
+        {
+          bank_nr = 1;
+          station_nr = 1;
+          saveStationOnSD();
+          u8g2.clearBuffer(); 
+          u8g2.drawStr(1,14, "SET BANK=1, STATION=1         ");
+          u8g2.drawStr(1,28, "ESP will RESET in 3sec.       ");
+          u8g2.sendBuffer();
+          delay(3000);
+          ESP.restart();
+        }  
+        else if (recoveryMode == 1)
+        {
+          u8g2.clearBuffer();
+          u8g2.drawStr(1,14, "WIFI SSID, PASSWD CLEARED   ");
+          u8g2.drawStr(1,28, "ESP will RESET in 3sec.     ");
+          u8g2.sendBuffer();
+          wifiManager.resetSettings();
+          delay(3000);
+          ESP.restart();
+        }
+      }
+      prev_CLK_state2 = CLK_state2;
+    }   
+  } 
+}
+
+void displayDimmerTimer()
+{
+  displayDimmerTimeCounter++;
+  if (displayActive == true){ 
+    displayDimmerTimeCounter = 0;
+    displayDimmer(0);
+    }
+  if (displayDimmerTimeCounter >= displayDimmerSetTime)
+  {
+    displayDimmer(1);
+    displayDimmerTimeCounter = 0;
+  }
+
+}
+
+void displayDimmer(bool dimmerON)
+{
+if ((dimmerON == 1) && (displayBrightness == 15) && (displayDimmerOn == true)) { u8g2.sendF("ca", 0xC7, dimmerDisplayBrightness);}
+if (dimmerON == 0) { u8g2.sendF("ca", 0xC7, displayBrightness); displayDimmerTimeCounter = 0;}
+}
+
+
 void encoderFunctionOrderChange()
 {
   displayActive = true;
@@ -4368,6 +4494,8 @@ void setup()
     //}
 
     timer1.attach(1, updateTimerFlag);  // Ustaw timer, aby wywoływał funkcję updateTimer co sekundę
+    timer2.attach(1, displayDimmerTimer);
+
     //timer1.attach(1, updateTimer);   // Ustaw timer, aby wywoływał funkcję updateTimer co sekundę
     //timer2.attach(0.00005,analyzePulseFromIR); // 100us
     //timer2.attach(60, getWeatherData);   // Ustaw timer, aby wywoływał funkcję getWeatherData co 60 sekund
@@ -4381,6 +4509,10 @@ void setup()
     
     readEqualizerFromSD(); // ODczytujemy ustawienia filtrów equalizera z karty SD 
     readVolumeFromSD(); // odczytujemy nastawę głośnosci staertowej
+
+    /*-------------------- RECOVERY MODE --------------------*/
+    recoveryModeCheck();
+
 
     uint8_t temp_station_nr = station_nr; // Chowamy na chwile odczytaną stacje z karty SD
     fetchStationsFromServer();
@@ -4417,6 +4549,19 @@ void setup()
   //if(kbd) {Serial.println("Task kbd created...");} 
   //else {Serial.printf("Couldn't create task %i", kbd);}
 
+  /*
+  int aud = xTaskCreatePinnedToCore(
+    audioProcessing, // Funkcja zadania
+    "handleAudio",  // Nazwa zadania (opcjonalna)
+    16384,            // Rozmiar stosu (w bajtach)
+    NULL,            // Parametry przekazywane do zadania (opcjonalne)
+    2,               // Priorytet zadania (0 to najniższy, im wyższa liczba, tym wyższy priorytet)
+    NULL,            // Uchwyt do zadania (opcjonalny)
+    1);              // Rdzeń, na którym zadanie ma być uruchomione (0 lub 1)
+
+  if(aud) {Serial.println("Task aud created...");}
+  else {Serial.printf("Couldn't create task %i", aud);}
+  */ 
 
 
 }
@@ -4441,6 +4586,8 @@ void loop()
 //    handleKeyboard();
 //  }
   
+  if (displayActive == true) {displayDimmer(0);}
+
   handleEncoder1(); // Obsługa enkodera 1
   
   if (encoderFunctionOrder == 0) { handleEncoder2VolumeStationsClick(); } // Obsługa enkodera 2
@@ -4483,6 +4630,7 @@ void loop()
      changeStation(); 
     }
     
+    displayDimmer(0);
     displayActive = false;
     timeDisplay = true;
     listedStations = false;
@@ -4545,6 +4693,8 @@ void loop()
       Serial.print(pulse_duration_1690us);
       Serial.print("  690us:");
       Serial.println(pulse_duration_560us);
+
+      displayDimmer(0); // jesli odbierzemy kod z pilota to wyłaczamy przyciemnienie OLED
       
       if (ir_code == rcCmdVolumeUp)      // Przycisk głośniej
       { 
@@ -4787,7 +4937,8 @@ void loop()
       else if (ir_code == rcCmdRed) 
       {
         basicInfo();
-        debugAudioBuffor = !debugAudioBuffor;     
+        debugAudioBuffor = !debugAudioBuffor;
+        displayDimmerOn = !displayDimmerOn;
         
       }
       //else if (ir_code == rcCmdDirect) {vuMeterOn = !vuMeterOn; displayRadio();}     
