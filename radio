@@ -53,7 +53,7 @@
 #define SCREEN_WIDTH 256        // Szerokość ekranu w pikselach
 #define SCREEN_HEIGHT 64        // Wysokość ekranu w pikselach
 
-// Enkoder 1 - uzwyany dla odtwarzacza
+// Enkoder 1 - uzywany dla odtwarzacza
 #define CLK_PIN1 6              // Podłączenie z pinu 6 do CLK na enkoderze prawym
 #define DT_PIN1 5               // Podłączenie z pinu 5 do DT na enkoderze prawym
 #define SW_PIN1 4               // Podłączenie z pinu 4 do SW na enkoderze prawym (przycisk)
@@ -135,9 +135,9 @@ bool cmdOk = false;          // Flaga Przycisk Ent - zatwierdzenie stacji
 bool cmdSrc = false;         // Flaga Przełączanie źródła radio, odtwarzacz
 bool cmdMute = false;        // Flaga Wyciszenie dzwieku
 bool cmdAud = false;         // Flaga Equalizer dzwieku
-bool cmdDirect = false;      // Flaga Janość ekranu, dwa tryby 1/16 lub pełna janość     
-bool cmdBankMinus = false;   // Flaga Wysweitla wybór banku
-bool cmdBankPlus = false;    // Flaga Wysweitla wybór banku
+bool cmdDirect = false;      // Flaga Jasność ekranu, dwa tryby 1/16 lub pełna jasność     
+bool cmdBankMinus = false;   // Flaga Wyswietla wybór banku
+bool cmdBankPlus = false;    // Flaga Wyswietla wybór banku
 bool cmdBankNetUpdate = false; // Flaga Przełacza ładowanie banku kartaSD - serwer GitHub w menu bank
 bool cmdDisplayMode = false; // Flaga VU wyłaczony, VU tryb 1, VU tryb 2, zegar
 bool cmdKey0 = false;        // Flaga Przycisk "0"
@@ -160,7 +160,7 @@ uint8_t bank_nr;                // Numer aktualnie wybranego banku stacji z list
 uint8_t previous_bank_nr = 0;   // Numer banku przed wejsciem do menu zmiany banku
 int bankFromBuffer = 0;         // Numer aktualnie wybranego banku stacji z listy do przywrócenia na ekran po bezczynności
 uint8_t screenRefreshCount = 0; // odświezeanie ekranu dla stajci bez statoin string
-uint8_t screenRefreshCountValue = 6; // Zmiena okreslajaca po ilu petlach nastapia ponowne odświezeanie ekranu OLED dla stajcji
+uint8_t screenRefreshCountValue = 6; // Zmiena okreslajaca po ilu petlach nastapia ponowne odświezeanie ekranu OLED dla stacji
 
 int CLK_state1;                        // Aktualny stan CLK enkodera prawego
 int prev_CLK_state1;                   // Poprzedni stan CLK enkodera prawego
@@ -173,8 +173,8 @@ int fileFromBuffer = 0;                // Numer aktualnie wybranego pliku do prz
 int folderIndex = 0;                   // Numer aktualnie wybranego folderu podczas przełączenia do odtwarzania z karty SD
 int folderFromBuffer = 0;              // Numer aktualnie wybranego folderu do przywrócenia na ekran po bezczynności
 int totalFilesInFolder = 0;            // Zmienna przechowująca łączną liczbę plików w folderze
-uint8_t volumeValue = 10;                  // Wartość głośności, domyślnie ustawiona na 10
-uint8_t volumeBufferValue = 0;             // Wartość głośności, domyślnie ustawiona na 10
+uint8_t volumeValue = 10;              // Wartość głośności, domyślnie ustawiona na 10
+uint8_t volumeBufferValue = 0;         // Wartość głośności, domyślnie ustawiona na 10
 int maxVisibleLines = 4;               // Maksymalna liczba widocznych linii na ekranie OLED
 int bitrateStringInt = 0;              // Deklaracja zmiennej do konwersji Bitrate string na wartosc Int aby podzelic bitrate przez 1000
 int buttonLongPressTime1 = 2000;       // Czas reakcji na długie nacisniecie enkoder 1
@@ -212,7 +212,7 @@ uint8_t configArray[16] = { 0 };
 //const int maxVisibleLines = 5;  // Maksymalna liczba widocznych linii na ekranie OLED
 bool encoderButton1 = false;      // Flaga określająca, czy przycisk enkodera 1 został wciśnięty
 bool encoderButton2 = false;      // Flaga określająca, czy przycisk enkodera 2 został wciśnięty
-bool encoderFunctionOrder = true;// Flaga okreslająca kolejność funkcji enkodera 2
+bool encoderFunctionOrder = true; // Flaga okreslająca kolejność funkcji enkodera 2
 bool fileEnd = false;             // Flaga sygnalizująca koniec odtwarzania pliku audio
 bool displayActive = false;       // Flaga określająca, czy wyświetlacz jest aktywny
 bool isPlaying = false;           // Flaga określająca, czy obecnie trwa odtwarzanie
@@ -220,7 +220,7 @@ bool mp3 = false;                 // Flaga określająca, czy aktualny plik audi
 bool flac = false;                // Flaga określająca, czy aktualny plik audio jest w formacie FLAC
 bool aac = false;                 // Flaga określająca, czy aktualny plik audio jest w formacie AAC
 bool vorbis = false;              // Flaga określająca, czy aktualny plik audio jest w formacie VORBIS
-bool opus = false;              // Flaga określająca, czy aktualny plik audio jest w formacie OPUS
+bool opus = false;                // Flaga określająca, czy aktualny plik audio jest w formacie OPUS
 bool id3tag = false;              // Flaga określająca, czy plik audio posiada dane ID3
 bool timeDisplay = true;          // Flaga określająca kiedy pokazać czas na wyświetlaczu, domyślnie od razu po starcie
 bool listedStations = false;      // Flaga określająca czy na ekranie jest pokazana lista stacji do wyboru
@@ -238,7 +238,7 @@ bool action3Taken = false;        // Flaga Akcji 3 - załaczenia VU
 bool updateTimeAtStart = false;    // AKtualizacja czasu po pierwszym uruchomieniu
 bool ActionNeedUpdateTime = false; // Zmiena okresaljaca dla displayRadio potrzebe odczytu aktulizacji czasu
 bool debugAudioBuffor = false;     // Wyswietlanie bufora Audio
-bool screenRefresh = false;         // Dodatkowe odswiezanie ekranu, właczone przy pierwszym uruchomieniu
+bool screenRefresh = false;        // Dodatkowe odswiezanie ekranu, właczone przy pierwszym uruchomieniu
 bool audioShowStreamtitleRefresh = false;
 bool audioInfoRefresh = false;
 bool vuMeterOnFlacStations = true;
@@ -1284,7 +1284,7 @@ void processText(String &text) {
         switch (text[i + 1]) {
           case (char)0x82: text.setCharAt(i, 0xB3); break;  // Zamiana na "ł" Unicode UTF-8
           case (char)0x84: text.setCharAt(i, 0xF1); break;  // Zamiana na "ń" Unicode UTF-8
-          case (char)0x9B: text.setCharAt(i, 0x9C); break;  // Zamiana na "ź" Unicode UTF-8
+          case (char)0x9B: text.setCharAt(i, 0x9C); break;  // Zamiana na "ś" Unicode UTF-8
           case (char)0xBB: text.setCharAt(i, 0xAF); break;  // Zamiana na "Ż" Unicode UTF-8
           case (char)0xBC: text.setCharAt(i, 0xBF); break;  // Zamiana na "ż" Unicode UTF-8
           case (char)0x83: text.setCharAt(i, 0xD1); break;  // Zamiana na "Ń" Unicode UTF-8
@@ -1388,8 +1388,8 @@ void displayRadio()
     {   
       if (stationNameStream == "")          // jezeli nie ma równiez stationName
       {
-        stationStringScroll = "---" ;
-      }      // wstawiamy trzy kreseczki do wyswietlenia
+        stationStringScroll = String(StationNrStr) + "." + stationName + ", ---" ; //wstawiamy nr stacji + nazwę stacji + trzy kreseczki do wyswietlenia
+      }
       else                                  // jezeli jest brak "stationString" ale jest "stationName" to składamy NR.Nazwa stacji z pliku, nadawany stationNameStream + separator przerwy
       { 
         stationStringScroll = String(StationNrStr) + "." + stationName + ", " + stationNameStream + "      ";
@@ -3231,14 +3231,27 @@ void updateTimer() {
       
       snprintf(timeString, sizeof(timeString), "%02d:%02d:%02d", timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
       u8g2.setFont(spleen6x12PL);
-      u8g2.drawStr(0, 63, "                         ");
+
+      if (displayMode == 0) {
+        u8g2.drawStr(0, 63, "                         ");
       
-      if (millis() - lastCheckTime >= 1000)
-      {
-      u8g2.drawStr(0, 63, "... No audio stream ! ...");
-      lastCheckTime = millis(); // Zaktualizuj czas ostatniego sprawdzenia
-      }       
-      u8g2.drawStr(208, 63, timeString);
+        if (millis() - lastCheckTime >= 1000)
+        {
+        u8g2.drawStr(0, 63, "... No audio stream ! ...");
+        lastCheckTime = millis(); // Zaktualizuj czas ostatniego sprawdzenia
+        }       
+        u8g2.drawStr(208, 63, timeString);
+       }
+        else if (displayMode == 1) {
+        u8g2.drawStr(50, 33, "                         ");
+        
+        if (millis() - lastCheckTime >= 1000)
+        {
+        u8g2.drawStr(50, 33, "... No audio stream ! ...");
+        lastCheckTime = millis(); // Zaktualizuj czas ostatniego sprawdzenia
+        }       
+        u8g2.drawStr(208, 63, timeString);
+       }
 
     }
   }
@@ -3542,150 +3555,6 @@ void calcNec() // Funkcja umozliwajaca przeliczanie odwrotne aby "udawac" przyci
   ir_code = reverse_bits(ir_code,32);     // rotacja bitów do porządku LSB-MSB jak w NEC        
 }
 
-
-//void handleKeyboard(void* pvParameters)
-void handleKeyboard()
-{
-  //for (;;) {
-  // vTaskDelay(50);
-  //int keyboardValue = analogRead(keyboardPin); // Odczyt wartości analogowej przycisku
-  uint8_t key = 17;
-  
-  
-  for (int i = 0; i < 32; i++)
-  {
-    keyboardValue = keyboardValue + analogRead(keyboardPin);
-  }
-  keyboardValue = keyboardValue / 32;  
-  
-
-  if (debugKeyboard == 1) 
-  { 
-    Serial.print("debug - ADC odczyt: ");
-    Serial.print(keyboardValue);
-    Serial.print(" flaga przycisk wcisniety:");
-    Serial.println(keyboardButtonPressed);
-  }
-  // Kasujemy flage nacisnietego przycisku tylko jesli nic nie jest wcisnięte
-  if (keyboardValue > keyboardButtonNeutral-keyboardButtonThresholdTolerance)
-  {  
-    keyboardButtonPressed = false;
-  }
-  // Jesli nic nie jest wcisniete i nic nie było nacisnięte analizujemy przycisk
-  if (keyboardValue < keyboardButtonNeutral-keyboardButtonThresholdTolerance)
-  {  
-    if (keyboardButtonPressed == false)
-    {
-      // Sprawdzamy stan klawiatury
-      if ((keyboardValue <= keyboardButtonThreshold_1 + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_1 - keyboardButtonThresholdTolerance ))
-      { key=1;keyboardButtonPressed = true;}
-
-      if ((keyboardValue <= keyboardButtonThreshold_2 + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_2 - keyboardButtonThresholdTolerance ))
-      { key=2;keyboardButtonPressed = true;}
-
-      if ((keyboardValue <= keyboardButtonThreshold_3 + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_3 - keyboardButtonThresholdTolerance ))
-      { key=3;keyboardButtonPressed = true;}
-
-      if ((keyboardValue <= keyboardButtonThreshold_4 + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_4 - keyboardButtonThresholdTolerance ))
-      { key=4;keyboardButtonPressed = true;}
-
-      if ((keyboardValue <= keyboardButtonThreshold_5 + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_5 - keyboardButtonThresholdTolerance ))
-      { key=5;keyboardButtonPressed = true;}
-
-      if ((keyboardValue <= keyboardButtonThreshold_6 + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_6 - keyboardButtonThresholdTolerance ))
-      { key=6;keyboardButtonPressed = true;}
-
-      if ((keyboardValue <= keyboardButtonThreshold_7 + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_7 - keyboardButtonThresholdTolerance ))
-      { key=7;keyboardButtonPressed = true;}
-
-      if ((keyboardValue <= keyboardButtonThreshold_8 + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_8 - keyboardButtonThresholdTolerance ))
-      { key=8;keyboardButtonPressed = true;}
-
-      if ((keyboardValue <= keyboardButtonThreshold_9 + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_9 - keyboardButtonThresholdTolerance ))
-      { key=9;keyboardButtonPressed = true;}
-
-      if ((keyboardValue <= keyboardButtonThreshold_0 + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_0 - keyboardButtonThresholdTolerance ))
-      { key=0;keyboardButtonPressed = true;}
-
-      if ((keyboardValue <= keyboardButtonThreshold_Memory + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_Memory - keyboardButtonThresholdTolerance ))
-      { key=11;keyboardButtonPressed = true;}
-
-      if ((keyboardValue <= keyboardButtonThreshold_Shift + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_Shift - keyboardButtonThresholdTolerance ))
-      { key=12;keyboardButtonPressed = true;}
-
-      if ((keyboardValue <= keyboardButtonThreshold_Auto + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_Auto - keyboardButtonThresholdTolerance ))
-      { key=13;keyboardButtonPressed = true;}
-
-      if ((keyboardValue <= keyboardButtonThreshold_Band + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_Band - keyboardButtonThresholdTolerance ))
-      { key=14;keyboardButtonPressed = true;}
-
-      if ((keyboardValue <= keyboardButtonThreshold_Mute + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_Mute - keyboardButtonThresholdTolerance ))
-      { key=15;keyboardButtonPressed = true;}
-
-      if ((keyboardValue <= keyboardButtonThreshold_Scan + keyboardButtonThresholdTolerance ) && (keyboardValue >= keyboardButtonThreshold_Scan - keyboardButtonThresholdTolerance ))
-      { key=16;keyboardButtonPressed = true;}
-
-      if ((key < 17) && (keyboardButtonPressed == true))
-      {
-        Serial.print("ADC odczyt poprawny: ");
-        Serial.print(keyboardValue);
-        Serial.print(" przycisk: ");
-        Serial.println(key);
-        keyboardValue = 0;
-     
-        if ((debugKeyboard == false) && (key < 10)) // Dla przyciskoq 0-9 wykonujemy akcje jak na pilocie
-        { rcInputKey(key);}
-        else if ((debugKeyboard == false) && (key == 11)) // Przycisk Memory wywyłuje menu wyboru Banku
-        { bankMenuDisplay();}
-        else if ((debugKeyboard == false) && (key == 12)) // Przycisk Shift zatwierdza zmiane stacji, banku, działa jak "OK" na pilocie
-        { 
-         ir_code = rcCmdOk; // Przycisk Auto TUning udaje OK
-          bit_count = 32;
-          calcNec();  // przeliczamy kod pilota na kod oryginalny pełen kod NEC
-         
-         // if (bankMenuEnable == true)
-         // {
-         //   station_nr = 1;
-         //   fetchStationsFromServer();
-         //   bankMenuEnable = false;
-         // }
-         // changeStation(); 
-         // displayRadio();
-         // u8g2.sendBuffer();
-        }
-        else if ((debugKeyboard == false) && (key == 13)) // Przycisk Auto - przełaczanie tryb Zegar/Radio
-        { 
-          ir_code = rcCmdSrc; // Przycisk Auto TUning udaje Src
-          bit_count = 32;
-          calcNec();  // przeliczamy kod pilota na kod oryginalny pełen kod NEC
-        }
-        else if ((debugKeyboard == false) && (key == 14)) // Przycisk Band udaje Back
-        {  
-          ir_code = rcCmdBack; // Udajemy komendy pilota
-          bit_count = 32;
-          calcNec();  // przeliczamy kod pilota na kod oryginalny pełen kod NEC
-        }
-        else if ((debugKeyboard == false) && (key == 15)) // Przycisk Mute
-        { 
-          ir_code = rcCmdMute; // Przypisujemy kod polecenia z pilota
-          bit_count = 32; // ustawiamy informacje, ze mamy pelen kod NEC do analizy 
-          calcNec();  // przeliczamy kod pilota na kod oryginalny pełen kod NEC     
-        }
-        else if ((debugKeyboard == false) && (key == 16)) // Przycisk Memory Scan - zmiana janości wyswietlacza - funkcja "Dimmer"
-        { 
-          ir_code = rcCmdDirect; // Udajemy komendy pilota
-          bit_count = 32;
-          calcNec();  // przeliczamy kod pilota na kod oryginalny pełen kod NEC
-        }
-
-
-        key=17; // Reset "KEY" do pozycji poza zakresem klawiatury
-      }
-    }
-  } 
-  //  }
-  // vTaskDelete(NULL);
-}
 
 
 void volumeDisplay()
@@ -4270,7 +4139,7 @@ void saveVuMeterModeOnSD()
 {
   // Sprawdź, czy plik config2.txt istnieje
   Serial.print("VU Meter Mode: ");
-  Serial.println(vuMeterMode ? "WŁĄCZONY" : "WYŁĄCZONY"); 
+  Serial.println(vuMeterMode ? "TRYB 1" : "TRYB 2"); 
 
   // Sprawdź, czy plik istnieje
   if (SD.exists("/config2.txt")) 
@@ -4335,7 +4204,7 @@ void readVuMeterModeFromSD()
       
       Serial.println("Wczytano config2.txt z karty SD.");
       Serial.print("Wartość VU Meter Mode odczytana z SD: ");
-      Serial.println(vuMeterMode ? "WŁĄCZONY" : "WYŁĄCZONY");
+      Serial.println(vuMeterMode ? "TRYB 1" : "TRYB 2");
     } 
     else 
     {
@@ -4346,7 +4215,7 @@ void readVuMeterModeFromSD()
   {
     Serial.println("Plik config2.txt nie istnieje.");
     Serial.print("Wartość VU Meter Mode domyślna: ");
-    Serial.println(vuMeterMode ? "WŁĄCZONY" : "WYŁĄCZONY");
+    Serial.println(vuMeterMode ? "TRYB 1" : "TRYB 2");
   }
 }
 
