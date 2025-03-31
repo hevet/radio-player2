@@ -94,8 +94,8 @@
 // Przypisanie przycisków i adresu pilota w standardzie NEC 
 // pierwszy bajt adres, drugi komenda (B914 - adres B9 komenda 14)
 
-#define rcCmdVolumeUp   0xB914  // Głosnosc +
-#define rcCmdVolumeDown 0xB915  // Głośnosc -
+#define rcCmdVolumeUp   0xB914  // Głosność +
+#define rcCmdVolumeDown 0xB915  // Głośność -
 #define rcCmdArrowRight 0xB90B  // strzałka w prawo - nastepna stacja
 #define rcCmdArrowLeft  0xB90A  // strzałka w lewo - poprzednia stacja  
 #define rcCmdArrowUp    0xB987  // strzałka w góre - lista stacji krok do gory
@@ -106,8 +106,8 @@
 #define rcCmdMute       0xB916  // Wyciszenie dzwieku
 #define rcCmdAud        0xB917  // Equalizer dzwieku
 #define rcCmdDirect     0xB90F  // Jasność ekranu, dwa tryby 1/16 lub pełna jasność     
-#define rcCmdBankMinus  0xB90C  // Wyswietla wybór banku
-#define rcCmdBankPlus   0xB90D  // Wyswietla wybór banku
+#define rcCmdBankMinus  0xB90C  // Wyświetla wybór banku
+#define rcCmdBankPlus   0xB90D  // Wyświetla wybór banku
 #define rcCmdRed        0xB988  // Przełacza ładowanie banku kartaSD - serwer GitHub w menu bank
 #define rcCmdGreen      0xB992  // VU wyłaczony, VU tryb 1, VU tryb 2, zegar
 #define rcCmdKey0       0xB900  // Przycisk "0"
@@ -135,7 +135,7 @@ bool cmdOk = false;          // Flaga Przycisk Ent - zatwierdzenie stacji
 bool cmdSrc = false;         // Flaga Przełączanie źródła radio, odtwarzacz
 bool cmdMute = false;        // Flaga Wyciszenie dzwieku
 bool cmdAud = false;         // Flaga Equalizer dzwieku
-bool cmdDirect = false;      // Flaga Jasność ekranu, dwa tryby 1/16 lub pełna jasność     
+bool cmdDirect = false;      // Flaga włączenie ekranu, wyłączenie ekranu     
 bool cmdBankMinus = false;   // Flaga Wyswietla wybór banku
 bool cmdBankPlus = false;    // Flaga Wyswietla wybór banku
 bool cmdBankNetUpdate = false; // Flaga Przełacza ładowanie banku kartaSD - serwer GitHub w menu bank
@@ -185,8 +185,8 @@ uint8_t stationNameLenghtCut = 24;    // 24-> 25 znakow, 25-> 26 znaków, zmienn
 
 // ---- Auto dimmer / auto przyciemnianie wyswietlacza ---- //
 uint8_t displayDimmerTimeCounter = 0;  // Zmienna inkrementowana w przerwaniu timera2 do przycimniania wyswietlacz
-uint8_t dimmerDisplayBrightness = 4;   // Wartość przyciemnienia wyswietlacza po czasie niekatywnosci
-uint8_t displayBrightness = 15;        // Domyślna maksymalna janość wyswietlacza
+uint8_t dimmerDisplayBrightness = 2;   // Wartość przyciemnienia wyswietlacza po czasie niekatywnosci
+uint8_t displayBrightness = 15;        // Domyślna maksymalna jasność wyswietlacza
 uint16_t displayAutoDimmerTime = 10;   // Czas po jakim nastąpi przyciemninie wyswietlacza, liczony w sekundach
 bool displayAutoDimmerOn = false;      // Automatyczne przyciemnianie wyswietlacza, domyślnie włączone
 
@@ -246,6 +246,7 @@ bool audioInfoRefresh = false;
 bool vuMeterOnFlacStations = true;
 bool noSDcard = false;              // flaga ustawiana przy braku wykrycia karty SD
 //bool noSDcardAlert = false;//true;          // Informacja o braku karty na wyswietlaczu, ustawienie na false powoduje, ze radio nie będzie jej wyswietlać
+bool isPowerSave = false;           // Flaga oszczędzania energii, domyślnie wyłączona
 
 unsigned long debounceDelay = 300;    // Czas trwania debouncingu w milisekundach
 unsigned long displayTimeout = 5000;  // Czas wyświetlania komunikatu na ekranie w milisekundach
@@ -870,7 +871,7 @@ void sanitizeAndSaveStation(const char *station) {
 // Jesli dany bank istnieje juz na karcie SD to odczytujemy tylko dany Bank z karty
 void readSDStations() {
   stationsCount = 0;
-  Serial.println("Plik Banu isnieje na karcie SD. Czytamy TYLKO z karty");
+  Serial.println("Plik Banu istnieje na karcie SD. Czytamy TYLKO z karty");
   //mp3 = flac = aac = false;
    mp3 = flac = aac = vorbis = opus = false;
   stationString.remove(0);  // Usunięcie wszystkich znaków z obiektu stationString
@@ -1738,6 +1739,60 @@ void printDirectoriesAndSavePaths(File dir, int numTabs, String currentPath) {
   }
 }
 
+void saveSettingsOnSD() 
+{
+  Serial.print("Display Auto Dimmer: ");
+  Serial.println(displayAutoDimmerOn ? "WŁĄCZONY" : "WYŁĄCZONY");
+  Serial.print("VU Meter Mode: ");
+  Serial.println(vuMeterMode ? "TRYB 1" : "TRYB 2");
+  Serial.print("Display Mode: ");
+  Serial.println(displayMode);
+  Serial.print("Encoder Function Order: ");
+  Serial.println(encoderFunctionOrder);  // Wyświetl aktualną wartość encoderFunctionOrder
+
+  // Sprawdź, czy plik istnieje
+  if (SD.exists("/config.txt")) 
+  {
+    Serial.println("Plik config.txt już istnieje.");
+
+    // Otwórz plik do zapisu i nadpisz aktualne wartości
+    myFile = SD.open("/config.txt", FILE_WRITE);
+    if (myFile) 
+    {
+      myFile.println(displayAutoDimmerOn ? 1 : 0);  // Zapisz Display Auto Dimmer
+      myFile.println(vuMeterMode ? 1 : 0);          // Zapisz VU Meter Mode
+      myFile.println(displayMode);                  // Zapisz Display Mode
+      myFile.println(encoderFunctionOrder);         // Zapisz Encoder Function Order
+      myFile.close();
+      Serial.println("Aktualizacja config.txt na karcie SD.");
+    } 
+    else 
+    {
+      Serial.println("Błąd podczas otwierania pliku config.txt.");
+    }
+  } 
+  else 
+  {
+    Serial.println("Plik config.txt nie istnieje. Tworzenie...");
+
+    // Utwórz plik i zapisz w nim wartości
+    myFile = SD.open("/config.txt", FILE_WRITE);
+    if (myFile) 
+    {
+      myFile.println(displayAutoDimmerOn ? 1 : 0);  // Zapisz Display Auto Dimmer
+      myFile.println(vuMeterMode ? 1 : 0);          // Zapisz VU Meter Mode
+      myFile.println(displayMode);                  // Zapisz Display Mode
+      myFile.println(encoderFunctionOrder);         // Zapisz Encoder Function Order
+      myFile.close();
+      Serial.println("Utworzono i zapisano config.txt na karcie SD.");
+    } 
+    else 
+    {
+      Serial.println("Błąd podczas tworzenia pliku config.txt.");
+    }
+  }
+}
+
 void encoderFunctionOrderChange()
 {
   displayActive = true;
@@ -1749,8 +1804,8 @@ void encoderFunctionOrderChange()
   u8g2.clearBuffer();
   u8g2.setFont(spleen6x12PL);
   u8g2.drawStr(1,14,"Encoder function order change:");
-  if (encoderFunctionOrder == false) {u8g2.drawStr(1,28,"Rotate for volume, press for station list");}
-  if (encoderFunctionOrder == true ) {u8g2.drawStr(1,28,"Rotate for station list, press for volume");}
+  if (encoderFunctionOrder == false) {u8g2.drawStr(1,28,"Rotate for volume, press for station list"); saveSettingsOnSD();}
+  if (encoderFunctionOrder == true ) {u8g2.drawStr(1,28,"Rotate for station list, press for volume"); saveSettingsOnSD();}
   u8g2.sendBuffer();
 }
 
@@ -3840,58 +3895,22 @@ void displayDimmer(bool dimmerON)
   if (dimmerON == 0) { u8g2.sendF("ca", 0xC7, displayBrightness); displayDimmerTimeCounter = 0;}
 }
 
-void saveDisplayAutoDimmerOnSD() 
-{
-  // Sprawdź, czy plik config.txt istnieje
-  Serial.print("Display Auto Dimmer: ");
-  Serial.println(displayAutoDimmerOn ? "WŁĄCZONY" : "WYŁĄCZONY"); 
-
-  // Sprawdź, czy plik istnieje
-  if (SD.exists("/config.txt")) 
-  {
-    Serial.println("Plik config.txt już istnieje.");
-
-    // Otwórz plik do zapisu i nadpisz aktualną wartość
-    myFile = SD.open("/config.txt", FILE_WRITE);
-    if (myFile) 
-    {
-      myFile.println(displayAutoDimmerOn ? 1 : 0);  // Zapisz jako 1 (true) lub 0 (false)
-      myFile.close();
-      Serial.println("Aktualizacja config.txt na karcie SD.");
-    } 
-    else 
-    {
-      Serial.println("Błąd podczas otwierania pliku config.txt.");
-    }
-  } 
-  else 
-  {
-    Serial.println("Plik config.txt nie istnieje. Tworzenie...");
-
-    // Utwórz plik i zapisz w nim wartość
-    myFile = SD.open("/config.txt", FILE_WRITE);
-    if (myFile) 
-    {
-      myFile.println(displayAutoDimmerOn ? 1 : 0);  // Zapisz jako 1 (true) lub 0 (false)
-      myFile.close();
-      Serial.println("Utworzono i zapisano config.txt na karcie SD.");
-    } 
-    else 
-    {
-      Serial.println("Błąd podczas tworzenia pliku config.txt.");
-    }
-  }
-}
 
 
-void readDisplayAutoDimmerFromSD()
+void readSettingsFromSD()
 {
   // Sprawdź, czy karta SD jest dostępna
   if (!SD.begin(47)) 
   {
-    Serial.println("Nie można znaleźć karty SD. Ustawiam domyślną wartość.");
+    Serial.println("Nie można znaleźć karty SD. Ustawiam domyślne wartości.");
     Serial.print("Wartość Display Auto Dimmer domyślna: ");
-    Serial.println(displayAutoDimmerOn);
+    Serial.println(displayAutoDimmerOn ? "WŁĄCZONY" : "WYŁĄCZONY");
+    Serial.print("Wartość VU Meter Mode domyślna: ");
+    Serial.println(vuMeterMode ? "TRYB 1" : "TRYB 2");
+    Serial.print("Wartość Display Mode domyślna: ");
+    Serial.println(displayMode);
+    Serial.print("Wartość Encoder Function Order domyślna: ");
+    Serial.println(encoderFunctionOrder);
     return;
   }
 
@@ -3901,15 +3920,31 @@ void readDisplayAutoDimmerFromSD()
     myFile = SD.open("/config.txt");
     if (myFile) 
     {
-      int dimmerValue = myFile.parseInt();  // Odczytaj wartość jako liczbę całkowitą (0 lub 1)
+      // Odczytaj wartości w kolejności: Display Auto Dimmer, VU Meter Mode, Display Mode, Encoder Function Order
+      int dimmerValue = myFile.parseInt();
+      int vuMeterValue = myFile.parseInt();
+      int modeValue = myFile.parseInt();
+      int encoderOrderValue = myFile.parseInt();  // Odczytaj wartość Encoder Function Order
       myFile.close();
-      
-      // Ustaw wartość na podstawie odczytu
+
+      // Ustaw wartości na podstawie odczytu
       displayAutoDimmerOn = (dimmerValue == 1);
+      vuMeterMode = (vuMeterValue == 1);
+      if (modeValue >= 0 && modeValue <= 2) 
+      {
+        displayMode = modeValue;
+      }
+      encoderFunctionOrder = (encoderOrderValue == 1);  // Ustaw encoderFunctionOrder na podstawie odczytu
       
       Serial.println("Wczytano config.txt z karty SD.");
       Serial.print("Wartość Display Auto Dimmer odczytana z SD: ");
       Serial.println(displayAutoDimmerOn ? "WŁĄCZONY" : "WYŁĄCZONY");
+      Serial.print("Wartość VU Meter Mode odczytana z SD: ");
+      Serial.println(vuMeterMode ? "TRYB 1" : "TRYB 2");
+      Serial.print("Wartość Display Mode odczytana z SD: ");
+      Serial.println(displayMode);
+      Serial.print("Wartość Encoder Function Order odczytana z SD: ");
+      Serial.println(encoderFunctionOrder);
     } 
     else 
     {
@@ -3921,181 +3956,16 @@ void readDisplayAutoDimmerFromSD()
     Serial.println("Plik config.txt nie istnieje.");
     Serial.print("Wartość Display Auto Dimmer domyślna: ");
     Serial.println(displayAutoDimmerOn ? "WŁĄCZONY" : "WYŁĄCZONY");
-  }
-}
-
-
-void saveVuMeterModeOnSD() 
-{
-  // Sprawdź, czy plik config2.txt istnieje
-  Serial.print("VU Meter Mode: ");
-  Serial.println(vuMeterMode ? "TRYB 1" : "TRYB 2"); 
-
-  // Sprawdź, czy plik istnieje
-  if (SD.exists("/config2.txt")) 
-  {
-    Serial.println("Plik config2.txt już istnieje.");
-
-    // Otwórz plik do zapisu i nadpisz aktualną wartość
-    myFile = SD.open("/config2.txt", FILE_WRITE);
-    if (myFile) 
-    {
-      myFile.println(vuMeterMode ? 1 : 0);  // Zapisz jako 1 (true) lub 0 (false)
-      myFile.close();
-      Serial.println("Aktualizacja config2.txt na karcie SD.");
-    } 
-    else 
-    {
-      Serial.println("Błąd podczas otwierania pliku config2.txt.");
-    }
-  } 
-  else 
-  {
-    Serial.println("Plik config2.txt nie istnieje. Tworzenie...");
-
-    // Utwórz plik i zapisz w nim wartość
-    myFile = SD.open("/config2.txt", FILE_WRITE);
-    if (myFile) 
-    {
-      myFile.println(vuMeterMode ? 1 : 0);  // Zapisz jako 1 (true) lub 0 (false)
-      myFile.close();
-      Serial.println("Utworzono i zapisano config2.txt na karcie SD.");
-    } 
-    else 
-    {
-      Serial.println("Błąd podczas tworzenia pliku config2.txt.");
-    }
-  }
-}
-
-
-void readVuMeterModeFromSD()
-{
-  // Sprawdź, czy karta SD jest dostępna
-  if (!SD.begin(47)) 
-  {
-    Serial.println("Nie można znaleźć karty SD. Ustawiam domyślną wartość.");
-    Serial.print("Wartość VU Meter Mode domyślna: ");
-    Serial.println(vuMeterMode);
-    return;
-  }
-
-  // Sprawdź, czy plik config2.txt istnieje
-  if (SD.exists("/config2.txt")) 
-  {
-    myFile = SD.open("/config2.txt");
-    if (myFile) 
-    {
-      int vuMeterValue = myFile.parseInt();  // Odczytaj wartość jako liczbę całkowitą (0 lub 1)
-      myFile.close();
-      
-      // Ustaw wartość na podstawie odczytu
-      vuMeterMode = (vuMeterValue == 1);
-      
-      Serial.println("Wczytano config2.txt z karty SD.");
-      Serial.print("Wartość VU Meter Mode odczytana z SD: ");
-      Serial.println(vuMeterMode ? "TRYB 1" : "TRYB 2");
-    } 
-    else 
-    {
-      Serial.println("Błąd podczas otwierania pliku config2.txt.");
-    }
-  } 
-  else 
-  {
-    Serial.println("Plik config2.txt nie istnieje.");
     Serial.print("Wartość VU Meter Mode domyślna: ");
     Serial.println(vuMeterMode ? "TRYB 1" : "TRYB 2");
-  }
-}
-
-
-void saveDisplayModeOnSD() 
-{
-  // Sprawdź, czy plik config3.txt istnieje
-  Serial.print("Display Mode: ");
-  Serial.println(displayMode);  // Wyświetl aktualny tryb
-
-  // Sprawdź, czy plik istnieje
-  if (SD.exists("/config3.txt")) 
-  {
-    Serial.println("Plik config3.txt już istnieje.");
-
-    // Otwórz plik do zapisu i nadpisz aktualną wartość
-    myFile = SD.open("/config3.txt", FILE_WRITE);
-    if (myFile) 
-    {
-      myFile.println(displayMode);  // Zapisz aktualny tryb (0, 1, 2)
-      myFile.close();
-      Serial.println("Aktualizacja config3.txt na karcie SD.");
-    } 
-    else 
-    {
-      Serial.println("Błąd podczas otwierania pliku config3.txt.");
-    }
-  } 
-  else 
-  {
-    Serial.println("Plik config3.txt nie istnieje. Tworzenie...");
-
-    // Utwórz plik i zapisz w nim aktualny tryb
-    myFile = SD.open("/config3.txt", FILE_WRITE);
-    if (myFile) 
-    {
-      myFile.println(displayMode);  // Zapisz aktualny tryb (0, 1, 2)
-      myFile.close();
-      Serial.println("Utworzono i zapisano config3.txt na karcie SD.");
-    } 
-    else 
-    {
-      Serial.println("Błąd podczas tworzenia pliku config3.txt.");
-    }
-  }
-}
-
-
-void readDisplayModeFromSD()
-{
-  // Sprawdź, czy karta SD jest dostępna
-  if (!SD.begin(47)) 
-  {
-    Serial.println("Nie można znaleźć karty SD. Ustawiam domyślną wartość.");
     Serial.print("Wartość Display Mode domyślna: ");
-    Serial.println(displayMode);  // Domyślna wartość
-    return;
-  }
-
-  // Sprawdź, czy plik config3.txt istnieje
-  if (SD.exists("/config3.txt")) 
-  {
-    myFile = SD.open("/config3.txt");
-    if (myFile) 
-    {
-      int modeValue = myFile.parseInt();  // Odczytaj wartość jako liczbę całkowitą (0, 1 lub 2)
-      myFile.close();
-
-      // Ustaw wartość displayMode tylko, jeśli jest w zakresie 0-2
-      if (modeValue >= 0 && modeValue <= 2) 
-      {
-        displayMode = modeValue;
-      }
-      
-      Serial.println("Wczytano config3.txt z karty SD.");
-      Serial.print("Wartość Display Mode odczytana z SD: ");
-      Serial.println(displayMode);
-    } 
-    else 
-    {
-      Serial.println("Błąd podczas otwierania pliku config3.txt.");
-    }
-  } 
-  else 
-  {
-    Serial.println("Plik config3.txt nie istnieje.");
-    Serial.print("Wartość Display Mode domyślna: ");
-    Serial.println(displayMode);  // Domyślna wartość
+    Serial.println(displayMode);
+    Serial.print("Wartość Encoder Function Order domyślna: ");
+    Serial.println(encoderFunctionOrder);
   }
 }
+
+
 
 
 
@@ -4117,7 +3987,7 @@ void displayConfig()
   u8g2.sendBuffer();
 }
 
-void clearFlags()  // Kasuje wszystkie flagi przebywania w menu, funkcjach itd. Pozwala pwrócic do wyswietlania ekranu głownego
+void clearFlags()  // Kasuje wszystkie flagi przebywania w menu, funkcjach itd. Pozwala powrócic do wyswietlania ekranu głownego
 {
     displayDimmer(0);
     displayActive = false;
@@ -4993,7 +4863,7 @@ void setup()
   u8g2.begin();
   delay(250);
   // Powitanie na wyswietlaczu:
-  u8g2.sendF("ca", 0xC7, displayBrightness); // Ustawiamy jasność ekranu zgodnie ze zmienna displayBrightness
+  //u8g2.sendF("ca", 0xC7, displayBrightness); // Ustawiamy jasność ekranu zgodnie ze zmienna displayBrightness
   
   u8g2.drawXBMP(0, 5, notes_width, notes_height, notes);  // obrazek - nutki
   u8g2.setFont(u8g2_font_fub14_tf);
@@ -5037,7 +4907,7 @@ void setup()
   
   
   u8g2.sendBuffer();
-  u8g2.sendF("ca", 0xC7, displayBrightness); // Ustawiamy jasność ekranu zgodnie ze zmienna displayBrightness
+  //u8g2.sendF("ca", 0xC7, displayBrightness); // Ustawiamy jasność ekranu zgodnie ze zmienna displayBrightness
   button2.setDebounceTime(50);  // Ustawienie czasu debouncingu dla przycisku enkodera 2
  
   // Inicjalizacja WiFiManagera
@@ -5046,9 +4916,10 @@ void setup()
   readStationFromSD();
   readEqualizerFromSD(); // ODczytujemy ustawienia filtrów equalizera z karty SD 
   readVolumeFromSD(); // odczytujemy nastawę głośnosci startowej
-  readDisplayAutoDimmerFromSD(); //odczytujemy ustawienia automatycznego ściemniania wyświetlacza
-  readVuMeterModeFromSD(); // odczytujemy ustawienia trybu VU Meter
-  readDisplayModeFromSD(); // odczytujemy ustawienia trybu wyświetlacza
+  //readDisplayAutoDimmerFromSD(); //odczytujemy ustawienia automatycznego ściemniania wyświetlacza
+  //readVuMeterModeFromSD(); // odczytujemy ustawienia trybu VU Meter
+  //readDisplayModeFromSD(); // odczytujemy ustawienia trybu wyświetlacza
+  readSettingsFromSD();
 
   /*-------------------- RECOVERY MODE --------------------*/
   recoveryModeCheck();
@@ -5629,7 +5500,7 @@ void loop()
          
          displayAutoDimmerOn = !displayAutoDimmerOn;
          displayConfig();
-         saveDisplayAutoDimmerOnSD();
+         saveSettingsOnSD();
         
       }
       else if (ir_code == rcCmdDirect) // Przycisk Direct -> Menu Bank - udpate GitHub, Menu Equalizer - reset wartosci, Radio Display - fnkcja przyciemniania ekranu
@@ -5648,9 +5519,18 @@ void loop()
         }
         if ((bankMenuEnable == false) && (equalizerMenuEnable == false) && (volumeSet == false))
         { 
-        displayBrightness =  displayBrightness + 15;
-        if (displayBrightness > 15){displayBrightness = 0;}
-        u8g2.sendF("ca", 0xC7, displayBrightness);
+        //displayBrightness =  displayBrightness + 15;
+        //if (displayBrightness > 15){displayBrightness = 0;}
+        //u8g2.sendF("ca", 0xC7, displayBrightness);
+        
+        // Zmiana stanu oszczędzania energii
+         isPowerSave = !isPowerSave; // Zmiana stanu oszczędzania energii
+
+         if (isPowerSave) {
+          u8g2.setPowerSave(1);  // Tryb oszczędzania energii
+        } else {
+          u8g2.setPowerSave(0);  // Tryb normalny
+        }
         }
       }      
       else if (ir_code == rcCmdSrc) 
@@ -5663,14 +5543,14 @@ void loop()
         ActionNeedUpdateTime = true;
         listedStations = false;
         displayActive = false;
-        saveDisplayModeOnSD();
+        saveSettingsOnSD();
 
       }
       else if (ir_code == rcCmdRed) 
       {
        if (displayMode == 0) {
            vuMeterMode = !vuMeterMode;
-           saveVuMeterModeOnSD();
+           saveSettingsOnSD();
       }
       }
       //else if (ir_code == rcCmdDirect) {vuMeterOn = !vuMeterOn; displayRadio();}     
