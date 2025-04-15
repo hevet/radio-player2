@@ -4791,49 +4791,113 @@ void setup()
       u8g2.sendBuffer();
     });
 
-    server.on("/firmware", HTTP_POST, [](AsyncWebServerRequest *request) {
-        request->send(200, "text/plain", "Update done");
-    }, [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
-        
-        u8g2.setCursor(5, 24); u8g2.print("File: " + String(filename));
-        u8g2.setCursor(5, 36); u8g2.print("Flashing... " + String(index / 1024) + " KB");
-        
+    server.on("/firmware", HTTP_POST, 
+  [](AsyncWebServerRequest *request) {
+    // Nie wysyłamy odpowiedzi tutaj – poczekajmy na koniec uploadu (final == true)
+  }, 
+  [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
+
+    // Wyświetlanie postępu na ekranie
+    u8g2.setCursor(5, 24);
+    u8g2.print("File: " + String(filename));
+    u8g2.setCursor(5, 36);
+    u8g2.print("Flashing... " + String(index / 1024) + " KB");
+    u8g2.sendBuffer();
+
+    // Debug przez serial
+    Serial.printf("[OTA] Writing chunk @ %u, size: %u bytes\n", index, len);
+
+    // Inicjalizacja aktualizacji
+    if (index == 0) {
+      Serial.printf("[OTA] Starting update for: %s\n", filename.c_str());
+      if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
+        Update.printError(Serial);
+        request->send(500, "text/plain", "Update init failed");
+        return;
+      }
+    }
+
+    // Zapis danych
+    if (Update.write(data, len) != len) {
+      Update.printError(Serial);
+    }
+
+    // Zakończenie aktualizacji
+    if (final) {
+      Serial.println("[OTA] Finalizing update...");
+
+      if (Update.end(true)) {
+        Serial.println("[OTA] Update complete!");
+
+        // OLED: zakończony update
+        u8g2.clearBuffer();
+        u8g2.setCursor(5, 24); u8g2.print("Firmware Updated!");
+        u8g2.setCursor(5, 36); u8g2.print("Rebooting...");
+        u8g2.setCursor(5, 48); u8g2.print("See you soon :)");
         u8g2.sendBuffer();
-        
-        //delay(100);
-        Serial.print("Firmware Update progress:");
-        Serial.print(index);
-        Serial.println(" kB\r");
 
-        //Serial.printf("Progress: %u kB\r", index);
+        // Odpowiedź HTML z ładną stroną i przekierowaniem
+        request->send(200, "text/html",
+          R"rawliteral(
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+              <meta charset="UTF-8">
+              <meta http-equiv="refresh" content="3; url=/" />
+              <title>Update Complete</title>
+              <style>
+                body {
+                  font-family: Arial, sans-serif;
+                  background-color: #f0f0f0;
+                  display: flex;
+                  justify-content: center;
+                  align-items: center;
+                  height: 100vh;
+                  margin: 0;
+                }
+                .card {
+                  background: white;
+                  padding: 2em 3em;
+                  border-radius: 12px;
+                  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+                  text-align: center;
+                }
+                .card h2 {
+                  color: #4CAF50;
+                }
+                .card p {
+                  color: #333;
+                  margin-top: 0.5em;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="card">
+                <h2>✅ Firmware Updated!</h2>
+                <p>Device will reboot and return to the main page shortly.</p>
+              </div>
+            </body>
+            </html>
+          )rawliteral"
+        );
 
-        if (!index) {
-            //Serial.printf("Update: %s\n", filename.c_str());
-            if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
-                Update.printError(Serial);
-            }
-        }
-        if (Update.write(data, len) != len) {
-            Update.printError(Serial);
-        }
-        if (final) {
-            if (Update.end(true)) 
-            {
-              displayStartTime = millis();
-              timeDisplay = false;
-              displayActive = true;
-              Serial.println("Update complete");
-              u8g2.setCursor(5, 48); u8g2.print("Completed - reset in 3sec");
-              u8g2.sendBuffer();
-              delay(3000);
-              ESP.restart();
-            } 
-            else 
-            {
-              Update.printError(Serial);
-            }
-        }
-    });
+        // Restart po zakończeniu połączenia
+        request->onDisconnect([]() {
+          delay(3000);  // poczekaj na dokończenie wysyłki
+          ESP.restart();
+        });
+
+      } else {
+        Serial.println("[OTA] Update failed at final stage.");
+        Update.printError(Serial);
+        request->send(500, "text/plain", "Update failed at final stage");
+      }
+    }
+  }
+);
+
+      
+    
 
     server.on("/page2", HTTP_GET, [](AsyncWebServerRequest *request)
     {
