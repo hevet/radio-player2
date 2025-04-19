@@ -20,10 +20,11 @@
 #include <ESPAsyncWebServer.h> // Bliblioteka asyncrhionicznego serwera web
 #include <AsyncTCP.h>          // Bliblioteka TCP dla serwera web
 #include <Update.h>            // Blibioteka dla aktulizacji OTA
+#include <ESPmDNS.h>
 
 // Deklaracja wersji oprogramowania i nazwy hosta widocznego w routerze oraz na ekranie OLED i stronie www
-#define softwareRev "v3.17.60"  // Wersja oprogramowania radia
-#define hostname "ESP32-Radio"  // Definicja nazwy hosta widoczna na zewnątrz
+#define softwareRev "v3.17.65"  // Wersja oprogramowania radia
+#define hostname "esp32radio"  // Definicja nazwy hosta widoczna na zewnątrz
 
 // Definicja pinow czytnika karty SD
 #define SD_CS 47    // Pin CS (Chip Select) dla karty SD wybierany jako interfejs SPI
@@ -176,7 +177,7 @@ bool mp3 = false;                 // Flaga określająca, czy aktualny plik audi
 bool flac = false;                // Flaga określająca, czy aktualny plik audio jest w formacie FLAC
 bool aac = false;                 // Flaga określająca, czy aktualny plik audio jest w formacie AAC
 bool vorbis = false;              // Flaga określająca, czy aktualny plik audio jest w formacie VORBIS
-bool opus = false;                // Flaga określająca, czy aktualny plik audio jest w formacie OPUS
+bool opus = false;              // Flaga określająca, czy aktualny plik audio jest w formacie OPUS
 bool id3tag = false;              // Flaga określająca, czy plik audio posiada dane ID3
 bool timeDisplay = true;          // Flaga określająca kiedy pokazać czas na wyświetlaczu, domyślnie od razu po starcie
 bool listedStations = false;      // Flaga określająca czy na ekranie jest pokazana lista stacji do wyboru
@@ -263,7 +264,6 @@ String url2play = "";
 
 File myFile;  // Uchwyt pliku
 
-
 U8G2_SSD1322_NHD_256X64_F_4W_HW_SPI u8g2(U8G2_R2, /* cs=*/CS_OLED, /* dc=*/DC_OLED, /* reset=*/RESET_OLED);  // Hardware SPI 3.12inch OLED
 //U8G2_SH1122_256X64_F_4W_HW_SPI u8g2(U8G2_R0, /* cs=*/ CS_OLED, /* dc=*/ DC_OLED, /* reset=*/ RESET_OLED);		// Hardware SPI  2.08inch OLED
 //U8G2_SSD1363_256X128_F_4W_HW_SPI u8g2(U8G2_R0, /* cs=*/CS_OLED, /* dc=*/DC_OLED, /* reset=*/RESET_OLED);  // Hardware SPI 3.12inch OLED
@@ -330,17 +330,16 @@ const char index_html[] PROGMEM = R"rawliteral(
 
 <body>
   <h2>ESP32 Web Radio</h2>
-  <p style="font-size: 1rem;">Station:%STATIONNUMBER%   Bank:%BANKVALUE%</p>
+  <p style="font-size: 1rem;">Station:%STATIONNUMBER%  Bank:%BANKVALUE%</p>
   <p style="font-size: 1.6rem;"><span id="textStationName"><b> %STATIONNAMEVALUE%</b></span></p>
   
   <p>Volume: <span id="textSliderValue">%SLIDERVALUE%</span></p>
   <p><input type="range" onchange="updateSliderVolume(this)" id="volumeSlider" min="1" max="21" value="%SLIDERVALUE%" step="1" class="slider"></p>
   <br>
-  <button class="button" onclick="location.href='/displayMode'">OLED Display Mode</button>
+  <button class="button" onClick="displayMode()">OLED Display Mode</button>
   <br>
   <p>Bank selection:</p>
-  
-     
+       
   <script>
   function updateSliderVolume(element) 
   {
@@ -382,6 +381,11 @@ const char index_html[] PROGMEM = R"rawliteral(
     xhr.send();
     document.location.reload();
     window.location.href=window.location.href();
+  }
+ 
+  function displayMode() 
+  {
+    fetch("/displayMode")
   }
   </script>
 
@@ -461,7 +465,7 @@ const char config_html[] PROGMEM = R"rawliteral(
 </table>
 <input type="submit" value="Update">
 </form>
-<p style='font-size: 0.8rem;'><a href='/'>Go Back</a></p>
+<p style='font-size: 0.8rem;'><a href='/menu'>Go Back</a></p>
 </body>
 </html>
 )rawliteral";
@@ -535,11 +539,44 @@ function toggleAdcDebug() {
 </script>
 
 
-<p style='font-size: 0.8rem;'><a href='/'>Go Back</a></p>
+<p style='font-size: 0.8rem;'><a href='/menu'>Go Back</a></p>
 </body>
 </html>
 )rawliteral";
 
+const char menu_html[] PROGMEM = R"rawliteral(
+  <!DOCTYPE HTML><html>
+  <head>
+  <link rel='icon' href='/favicon.ico' type='image/x-icon'>
+  <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon.png">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ESP32 Web Radio</title>
+  <style>
+    html {font-family: Arial; display: inline-block; text-align: center;}
+    h2 {font-size: 2.3rem;}
+    p {font-size: 1.1rem;}
+    a {color: black; text-decoration: none;}
+    body {max-width: 1380px; margin:0px auto; padding-bottom: 25px;}
+    .button { background-color: #4CAF50; border: 1; color: white; padding: 10px 20px; border-radius: 5px; width:200px;}
+    .button:hover {background-color: #4a4a4a;}
+    .button:active {background-color: #4a4a4a; box-shadow: 0 4px #666; transform: translateY(2px);}
+    
+  </style>
+  </head>
+  <body>
+  <h2>ESP32 Web Radio - Menu</h2>
+  <br><button class="button" onclick="location.href='/fwupdate'">OTA Update</button><br>
+  <br><button class="button" onclick="location.href='/adc'">ADC Keyboard Settings</button><br>
+  <br><button class="button" onclick="location.href='/list'">SD / SPIFFS Explorer</button><br>
+  <br><button class="button" onclick="location.href='/editor'">Memory Bank Editor</button><br>
+  <br><button class="button" onclick="location.href='/config'">Configuration</button><br>
+  <br><p style='font-size: 0.8rem;'><a href='/'>Go Back</a></p>
+  </body></html>
+
+)rawliteral";
 
 String processor(const String& var)
 {
@@ -2348,7 +2385,7 @@ void updateTimer()
     }
     */
 
-    //if ((currentOption == INTERNET_RADIO) && ((mp3 == true) || (flac == true) || (aac == true) || (vorbis == true) || (opus == true)) 
+    //if ((currentOption == INTERNET_RADIO) && ((mp3 == true) || (flac == true) || (aac == true) || (vorbis == true))) 
     //if ((currentOption == INTERNET_RADIO) && (timeDisplay == true) && (audio.isRunning() == true))
     if ((timeDisplay == true) && (audio.isRunning() == true))
     {
@@ -4118,6 +4155,9 @@ void readPSRAMstations()  // Funkcja testowa-debug, do odczytu PSRAMu, nie uzywa
 
 void webUrlStationPlay() 
 {
+  stationString.remove(0);  // Usunięcie wszystkich znaków z obiektu stationString
+  stationNameStream.remove(0);
+  
   audio.stopSong();
 
   u8g2.clearBuffer();
@@ -4156,8 +4196,14 @@ void webUrlStationPlay()
     u8g2.drawStr(34, 55, String(url2play).c_str());
     u8g2.sendBuffer();
     
+    station_nr = 0;
+    bank_nr = 0;
+    //stationName = "Remote URL";
+    
     // Połącz z daną stacją
     audio.connecttohost(url2play.c_str());
+    
+
   } 
   else 
   {
@@ -4166,7 +4212,8 @@ void webUrlStationPlay()
   }
   station_nr = 0;
   bank_nr = 0;
-  stationName = stationNameStream;
+  //stationName = stationNameStream;
+  stationName = "WEB URL";
   url2play = "";
 }
 
@@ -4225,7 +4272,8 @@ void stationBankListHtmlMobile()
   html += "</div>" + String("\n");
 
   html += "<p style=\"font-size: 0.8rem;\">Web Radio, mobile, Evo: " + String(softwareRev) + "</p>" + String("\n");
-  html += "<p style=\"font-size: 0.8rem;\"><a href=\"list\">SD CARD, </a><a href='/fwupdate'>OTA UPDATE, </a><a href='/config'>CONFIG</a></p>" + String("\n");
+  //html += "<p style=\"font-size: 0.8rem;\"><a href=\"list\">SD CARD, </a><a href='/fwupdate'>OTA UPDATE, </a><a href='/config'>CONFIG</a></p>" + String("\n");
+  html += "<p style='font-size: 0.8rem;'><a href='/menu'>MENU</a></p>" + String("\n");
   html += "</center></body></html>";
 
 }
@@ -4298,8 +4346,9 @@ void stationBankListHtmlPC()
   html += "</table>" + String("\n");
   html += "</div>" + String("\n");
   html += "<p style=\"font-size: 0.8rem;\">Web Radio, desktop, Evo: " + String(softwareRev) + "</p>" + String("\n");
-  html += "<p style=\"font-size: 0.8rem;\"><a href=\"list\">SD CARD, </a><a href='/fwupdate'>OTA UPDATE, </a><a href='/config'>CONFIG</a></p>" + String("\n");
-  
+  //html += "<p style=\"font-size: 0.8rem;\"><a href=\"list\">SD CARD, </a><a href='/fwupdate'>OTA UPDATE, </a><a href='/config'>CONFIG</a></p>" + String("\n");
+  html += "<p style='font-size: 0.8rem;'><a href='/menu'>MENU</a></p>" + String("\n");
+
   html += "</center></body></html>"; 
 
 }
@@ -4734,6 +4783,9 @@ void setup()
     changeStation();                      // Ustawiamy stację
     
     // ########################################### WEB Server ######################################################
+    
+    DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
+    
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
     {
       String userAgent = request->header("User-Agent");
@@ -4762,7 +4814,13 @@ void setup()
         request->send(SD, "/icon.png", "image/x-icon");       
     });
 
-    
+    server.on("/menu", HTTP_GET, [](AsyncWebServerRequest *request){
+      
+      String html = String(menu_html);
+
+      request->send(200, "text/html", html);
+    });
+
 
     server.on("/fwupdate", HTTP_GET, [](AsyncWebServerRequest *request){
 
@@ -4791,113 +4849,49 @@ void setup()
       u8g2.sendBuffer();
     });
 
-    server.on("/firmware", HTTP_POST, 
-  [](AsyncWebServerRequest *request) {
-    // Nie wysyłamy odpowiedzi tutaj – poczekajmy na koniec uploadu (final == true)
-  }, 
-  [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
-
-    // Wyświetlanie postępu na ekranie
-    u8g2.setCursor(5, 24);
-    u8g2.print("File: " + String(filename));
-    u8g2.setCursor(5, 36);
-    u8g2.print("Flashing... " + String(index / 1024) + " KB");
-    u8g2.sendBuffer();
-
-    // Debug przez serial
-    Serial.printf("[OTA] Writing chunk @ %u, size: %u bytes\n", index, len);
-
-    // Inicjalizacja aktualizacji
-    if (index == 0) {
-      Serial.printf("[OTA] Starting update for: %s\n", filename.c_str());
-      if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
-        Update.printError(Serial);
-        request->send(500, "text/plain", "Update init failed");
-        return;
-      }
-    }
-
-    // Zapis danych
-    if (Update.write(data, len) != len) {
-      Update.printError(Serial);
-    }
-
-    // Zakończenie aktualizacji
-    if (final) {
-      Serial.println("[OTA] Finalizing update...");
-
-      if (Update.end(true)) {
-        Serial.println("[OTA] Update complete!");
-
-        // OLED: zakończony update
-        u8g2.clearBuffer();
-        u8g2.setCursor(5, 24); u8g2.print("Firmware Updated!");
-        u8g2.setCursor(5, 36); u8g2.print("Rebooting...");
-        u8g2.setCursor(5, 48); u8g2.print("See you soon :)");
+    server.on("/firmware", HTTP_POST, [](AsyncWebServerRequest *request) {
+        request->send(200, "text/plain", "Update done");
+    }, [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
+        
+        u8g2.setCursor(5, 24); u8g2.print("File: " + String(filename));
+        u8g2.setCursor(5, 36); u8g2.print("Flashing... " + String(index / 1024) + " KB");
+        
         u8g2.sendBuffer();
+        
+        //delay(100);
+        Serial.print("Firmware Update progress:");
+        Serial.print(index);
+        Serial.println(" kB\r");
 
-        // Odpowiedź HTML z ładną stroną i przekierowaniem
-        request->send(200, "text/html",
-          R"rawliteral(
-            <!DOCTYPE html>
-            <html lang="en">
-            <head>
-              <meta charset="UTF-8">
-              <meta http-equiv="refresh" content="3; url=/" />
-              <title>Update Complete</title>
-              <style>
-                body {
-                  font-family: Arial, sans-serif;
-                  background-color: #f0f0f0;
-                  display: flex;
-                  justify-content: center;
-                  align-items: center;
-                  height: 100vh;
-                  margin: 0;
-                }
-                .card {
-                  background: white;
-                  padding: 2em 3em;
-                  border-radius: 12px;
-                  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-                  text-align: center;
-                }
-                .card h2 {
-                  color: #4CAF50;
-                }
-                .card p {
-                  color: #333;
-                  margin-top: 0.5em;
-                }
-              </style>
-            </head>
-            <body>
-              <div class="card">
-                <h2>✅ Firmware Updated!</h2>
-                <p>Device will reboot and return to the main page shortly.</p>
-              </div>
-            </body>
-            </html>
-          )rawliteral"
-        );
+        //Serial.printf("Progress: %u kB\r", index);
 
-        // Restart po zakończeniu połączenia
-        request->onDisconnect([]() {
-          delay(3000);  // poczekaj na dokończenie wysyłki
-          ESP.restart();
-        });
-
-      } else {
-        Serial.println("[OTA] Update failed at final stage.");
-        Update.printError(Serial);
-        request->send(500, "text/plain", "Update failed at final stage");
-      }
-    }
-  }
-);
-
-      
-    
+        if (!index) {
+            //Serial.printf("Update: %s\n", filename.c_str());
+            if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
+                Update.printError(Serial);
+            }
+        }
+        if (Update.write(data, len) != len) {
+            Update.printError(Serial);
+        }
+        if (final) {
+            if (Update.end(true)) 
+            {
+              displayStartTime = millis();
+              timeDisplay = false;
+              displayActive = true;
+              Serial.println("Update complete");
+              u8g2.setCursor(5, 48); u8g2.print("Completed - reset in 3sec");
+              u8g2.sendBuffer();
+              delay(3000);
+              ESP.restart();
+            } 
+            else 
+            {
+              Update.printError(Serial);
+            }
+        }
+    });
 
     server.on("/page2", HTTP_GET, [](AsyncWebServerRequest *request)
     {
@@ -4909,13 +4903,12 @@ void setup()
 
     server.on("/displayMode", HTTP_GET, [](AsyncWebServerRequest *request)
     {
-      displayMode++;
-      if (displayMode > 2) {displayMode = 0; }
-      //ODswiezenie ekranu OLED po zmianach konfiguracji
-      ir_code = rcCmdBack; // Udajemy kod pilota Back
+      ir_code = rcCmdSrc; // Udajemy kod pilota SRC - zmiana trybu wyswietlacza 
       bit_count = 32;
       calcNec();          // Przeliczamy kod pilota na pełny oryginalny kod NEC
-      request->redirect("/");
+      
+      //request->redirect("/");
+      request->send(200, "text/plain", "DisplayMode Changed"); // Wysyłanie aktualnej wartości
       //request->send(200, "text/html", html.c_str(), processor);
     });
 
@@ -4926,16 +4919,11 @@ void setup()
       request->redirect("/");
     });
 
-
-
-
-
-/*
-    server.on("/page3", HTTP_ANY, [](AsyncWebServerRequest *request)
+    server.on("/editor", HTTP_GET, [](AsyncWebServerRequest *request)
     {
-      request->send(SD, "/remote.txt", "application/octet-stream", true); //"application/octet-stream");
+      request->send(SD, "/editor.html", "text/html"); //"application/octet-stream");
     });
-
+/*
     server.on("/list", HTTP_GET, [](AsyncWebServerRequest *request) 
     {
         String html = "<html><body><h1>SD card content:</h1><ul>";
@@ -4951,43 +4939,40 @@ void setup()
 
 */
 
-server.on("/edit", HTTP_GET, [](AsyncWebServerRequest *request) {
-  if (!request->hasParam("filename")) {
-      request->send(400, "text/plain", "Brak parametru filename");
-      return;
-  }
+    server.on("/edit", HTTP_GET, [](AsyncWebServerRequest *request) {
+    if (!request->hasParam("filename")) {
+        request->send(400, "text/plain", "Brak parametru filename");
+        return;
+    }
 
-  String filename = request->getParam("filename")->value();
-  if (!filename.startsWith("/")) { filename = "/" + filename; }
-  File file = SD.open(filename, FILE_READ);
-  if (!file) {
-      request->send(404, "text/plain", "Nie można otworzyć pliku");
-      return;
-  }
+    String filename = request->getParam("filename")->value();
+    if (!filename.startsWith("/")) { filename = "/" + filename;}
+    File file = SD.open(filename, FILE_READ);
+    if (!file) {
+        request->send(404, "text/plain", "Nie można otworzyć pliku");
+        return;
+    }
 
-  String html = "<!DOCTYPE html><html><head>";
-  html += "<meta charset=\"UTF-8\">";
-  html += "<title>Edit File</title></head><body>";
-  html += "<h2>Editing: " + filename + "</h2>";
-  html += "<form method='POST' action='/save'>";
-  html += "<input type='hidden' name='filename' value='" + filename + "'>";
-  html += "<textarea name='content' rows='100' cols='130'>";
+    String html = "<html><head><title>Edit File</title></head><body>";
+    html += "<h2>Editing: " + filename + "</h2>";
+    html += "<form method='POST' action='/save'>";
+    html += "<input type='hidden' name='filename' value='" + filename + "'>";
+    html += "<textarea name='content' rows='100' cols='130'>";
 
-  while (file.available()) {
-      html += (char)file.read();
-  }
+    while (file.available()) {
+        html += (char)file.read();
+    }
 
-  file.close();
+    file.close();
 
-  html += "</textarea><br>";
-  html += "<input type='submit' value='Save'>";
-  html += "</form>";
-  html += "<p><a href='/list'>Back to list</a></p>";
-  html += "</body></html>";
+    html += "</textarea><br>";
+    html += "<input type='submit' value='Save'>";
+    html += "</form>";
+    html += "<p><a href='/list'>Back to list</a></p>";
+    html += "</body></html>";
 
-  request->send(200, "text/html; charset=utf-8", html); // <- ważne!
-});
-
+    request->send(200, "text/html", html);
+    });
 
 
 
@@ -5115,7 +5100,7 @@ server.on("/edit", HTTP_GET, [](AsyncWebServerRequest *request) {
 
     listFiles("/", html);
     html += "</table></div>";
-    html += "<p style='font-size: 0.8rem;'><a href='/'>Go Back</a></p>" + String("\n"); 
+    html += "<p style='font-size: 0.8rem;'><a href='/menu'>Go Back</a></p>" + String("\n"); 
     html += "</body></html>";     
     request->send(200, "text/html", html);
     });
@@ -5248,7 +5233,7 @@ server.on("/edit", HTTP_GET, [](AsyncWebServerRequest *request) {
       keyboardButtonThreshold_9 = request->getParam("keyboardButtonThreshold_9", true)->value().toInt();
     }
 
-    request->send(200, "text/html", "<h1>ADC Keyboard Thresholds Updated!</h1><a href=\"/\">Go Back</a>");
+    request->send(200, "text/html", "<h1>ADC Keyboard Thresholds Updated!</h1><a href='/menu'>Go Back</a>");
     
     saveAdcConfig(); 
     
@@ -5304,37 +5289,8 @@ server.on("/edit", HTTP_GET, [](AsyncWebServerRequest *request) {
       displayPowerSaveTime = request->getParam("displayPowerSaveTime", true)->value().toInt();
     }  
 
-    //request->send(200, "text/html", "<h1>Configuration Updated!</h1><a href=\"/\">Go Back</a>");
-    //saveConfig();
-    
-    request->send(200, "text/html", R"rawliteral(
-      <html>
-        <head>
-          <meta charset="UTF-8">
-          <title>Updated</title>
-          <script>
-            let seconds = 3;
-            function countdown() {
-              if (seconds > 0) {
-                document.getElementById("countdown").textContent = seconds;
-                seconds--;
-                setTimeout(countdown, 1000);
-              } else {
-                window.location.href = "/";
-              }
-            }
-            window.onload = countdown;
-          </script>
-        </head>
-        <body style="font-family: sans-serif; text-align: center; padding-top: 50px;">
-          <h1>Configuration Updated!</h1>
-          <p>Redirecting to home in <span id="countdown">3</span> seconds...</p>
-          <a href="/">Go Back Now</a>
-        </body>
-      </html>
-    )rawliteral");
-    
-    saveConfig();
+    request->send(200, "text/html", "<h1>Configuration Updated!</h1><a href='/menu'>Go Back</a>");
+    saveConfig(); 
     
     //ODswiezenie ekranu OLED po zmianach konfiguracji
     ir_code = rcCmdBack; // Udajemy komendy pilota
@@ -5366,35 +5322,96 @@ server.on("/edit", HTTP_GET, [](AsyncWebServerRequest *request) {
     });
 
     server.on("/view", HTTP_GET, [](AsyncWebServerRequest *request) 
-{
-    String filename = "/";
-    if (request->hasParam("filename")) 
     {
+      String filename = "/";
+      if (request->hasParam("filename")) 
+      {
         filename += request->getParam("filename")->value();
+        //String fullPath = "/" + filename;
 
         File file = SD.open(filename);
         if (file) 
         {
-            String content = "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"></head><body>";
-            content += "<h1>File content: " + filename + "</h1><pre>";
+            String content = "<html><body><h1>File content: " + filename + "</h1><pre>";
             while (file.available()) {
                 content += (char)file.read();
             }
             content += "</pre><a href=\"/list\">Back to list</a></body></html>";
-            request->send(200, "text/html; charset=utf-8", content); // <- ważne!
+            request->send(200, "text/html", content);
             file.close();
+          } 
+          else 
+          {
+            request->send(404, "text/plain", "File not found");
+          }
         } 
         else 
         {
-            request->send(404, "text/plain", "File not found");
-        }
-    } 
-    else 
-    {
         request->send(400, "text/plain", "No file name");
-    }
-});
+      }
+    });
+    // Format viewweb na potrzeby zewnetrznego Edytora Bankow HTML
+    server.on("/viewweb", HTTP_GET, [](AsyncWebServerRequest *request)  
+    {
+      String filename = "/";
+      if (request->hasParam("filename")) 
+      {
+        filename += request->getParam("filename")->value();
+        //String fullPath = "/" + filename;
 
+        File file = SD.open(filename);
+        if (file) 
+        {
+            String content; //= "<html><body>";
+            while (file.available()) {
+                content += (char)file.read();
+            }
+            //content +="</body></html>";
+            request->send(200, "text/html", content);
+            file.close();
+          } 
+          else 
+          {
+            request->send(404, "text/plain", "File not found");
+          }
+        } 
+        else 
+        {
+        request->send(400, "text/plain", "No file name");
+      }
+    });
+    
+    server.on("/viewweb2", HTTP_GET, [](AsyncWebServerRequest *request)  
+    {
+      String filename = "/";
+      if (request->hasParam("filename")) 
+      {
+        filename += request->getParam("filename")->value();
+        //String fullPath = "/" + filename;
+
+        File file = SD.open(filename);
+        if (file) 
+        {
+            String content; //= "<html><body>";
+            while (file.available()) {
+                //line = file.readStringUntil('\n');
+                content += file.readStringUntil('\n') + String("\n");
+            }
+            //content +="</body></html>";
+            request->send(200, "text/html", content);
+            file.close();
+          } 
+          else 
+          {
+            request->send(404, "text/plain", "File not found");
+          }
+        } 
+        else 
+        {
+        request->send(400, "text/plain", "No file name");
+      }
+    });
+  
 
     server.on("/download", HTTP_ANY, [](AsyncWebServerRequest *request) {
     if (request->hasParam("filename")) {
@@ -5514,6 +5531,7 @@ server.on("/edit", HTTP_GET, [](AsyncWebServerRequest *request) {
       String inputMessage2;
       String inputMessage3;
       String inputMessage4;
+      String inputMessage5;
       // GET input1 value on <ESP_IP>/slider?value=<inputMessage>
       if (request->hasParam(PARAM_INPUT_1)) // Parametr zmiana głośności
       {
@@ -5568,7 +5586,7 @@ server.on("/edit", HTTP_GET, [](AsyncWebServerRequest *request) {
         inputMessage4 = request->getParam(PARAM_INPUT_4)->value();
         url2play = inputMessage4.c_str();
         urlToPlay = true;
-      }              
+      }
       else 
       {
         inputMessage1 = "No message sent";
@@ -5598,6 +5616,9 @@ server.on("/edit", HTTP_GET, [](AsyncWebServerRequest *request) {
     updateTimer();
     //readRemoteConfig();
     //assignRemoteCodes();
+    if (MDNS.begin(hostname)) { Serial.println("mDNS rozpoczęte. HOSTNAME.local' w przeglądarce"); }
+
+
   } 
   else 
   {
