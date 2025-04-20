@@ -94,7 +94,7 @@ uint16_t rcCmdOk = 0;         // Przycisk Ent - zatwierdzenie stacji
 uint16_t rcCmdSrc = 0;        // Przełączanie źródła radio, odtwarzacz
 uint16_t rcCmdMute = 0;       // Wyciszenie dzwieku
 uint16_t rcCmdAud = 0;        // Equalizer dzwieku
-uint16_t rcCmdDirect = 0;     // Janość ekranu, dwa tryby 1/16 lub pełna janość     
+uint16_t rcCmdDirect = 0;     // Jasność ekranu, dwa tryby 1/16 lub pełna jasność     
 uint16_t rcCmdBankMinus = 0;  // Wysweitla wybór banku
 uint16_t rcCmdBankPlus = 0;   // Wysweitla wybór banku
 uint16_t rcCmdRed = 0;        // Przełacza ładowanie banku kartaSD - serwer GitHub w menu bank
@@ -4953,7 +4953,9 @@ void setup()
         return;
     }
 
-    String html = "<html><head><title>Edit File</title></head><body>";
+    String html = "<!DOCTYPE html><html><head>";
+    html += "<meta charset=\"UTF-8\">";
+    html += "<title>Edit File</title></head><body>";
     html += "<h2>Editing: " + filename + "</h2>";
     html += "<form method='POST' action='/save'>";
     html += "<input type='hidden' name='filename' value='" + filename + "'>";
@@ -5332,7 +5334,8 @@ void setup()
         File file = SD.open(filename);
         if (file) 
         {
-            String content = "<html><body><h1>File content: " + filename + "</h1><pre>";
+            String content = "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"></head><body>";
+            content += "<h1>File content: " + filename + "</h1><pre>";
             while (file.available()) {
                 content += (char)file.read();
             }
