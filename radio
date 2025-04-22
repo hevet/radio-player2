@@ -118,18 +118,18 @@ int stationFromBuffer = 0;      // Numer stacji radiowej przechowywanej w buforz
 uint8_t bank_nr;                // Numer aktualnie wybranego banku stacji z listy
 uint8_t previous_bank_nr = 0;   // Numer banku przed wejsciem do menu zmiany banku
 int bankFromBuffer = 0;         // Numer aktualnie wybranego banku stacji z listy do przywrócenia na ekran po bezczynności
-int CLK_state2;                        // Aktualny stan CLK enkodera lewego
-int prev_CLK_state2;                   // Poprzedni stan CLK enkodera lewego
-int stationsCount = 0;                 // Aktualna liczba przechowywanych stacji w tablicy
-//int fileFromBuffer = 0;                // Numer aktualnie wybranego pliku do przywrócenia na ekran po bezczynności
-uint8_t volumeValue = 10;                  // Wartość głośności, domyślnie ustawiona na 10
-uint8_t volumeBufferValue = 0;             // Wartość głośności, domyślnie ustawiona na 10
+int CLK_state2;                 // Aktualny stan CLK enkodera lewego
+int prev_CLK_state2;            // Poprzedni stan CLK enkodera lewego
+int stationsCount = 0;          // Aktualna liczba przechowywanych stacji w tablicy
+//int fileFromBuffer = 0;       // Numer aktualnie wybranego pliku do przywrócenia na ekran po bezczynności
+uint8_t volumeValue = 10;       // Wartość głośności, domyślnie ustawiona na 10
+uint8_t volumeBufferValue = 0;  // Wartość głośności, domyślnie ustawiona na 10
 int maxVisibleLines = 4;               // Maksymalna liczba widocznych linii na ekranie OLED
 int bitrateStringInt = 0;              // Deklaracja zmiennej do konwersji Bitrate string na wartosc Int aby podzelic bitrate przez 1000
 int buttonLongPressTime2 = 2000;       // Czas reakcji na długie nacisniecie enkoder 2
 int buttonShortPressTime2 = 500;       // Czas rekacjinna krótkie nacisniecie enkodera 2
 int buttonSuperLongPressTime2 = 4000;  // Czas reakcji na super długie nacisniecie enkoder 2
-uint8_t stationNameLenghtCut = 24;    // 24-> 25 znakow, 25-> 26 znaków, zmienna określająca jak długa nazwę ma nazwa stacji w plikach Bankow liczone od 0- wartosci ustalonej
+uint8_t stationNameLenghtCut = 24;     // 24-> 25 znakow, 25-> 26 znaków, zmienna określająca jak długa nazwę ma nazwa stacji w plikach Bankow liczone od 0- wartosci ustalonej
 
 // ---- Voice promt of Time every hour / Głosowe odtwarzanie czasu co godzinę ---- //
 bool voiceTimePlay = false; 
@@ -1587,6 +1587,9 @@ void audio_eof_speech(const char *info) {
   Serial.println(info);
   if (resumePlay == true)
   {
+    delay(1000); // Opóźnienie, aby upewnić się, że kod został wysłany
+    ir_code = rcCmdOk; // Przypisujemy kod pilota - OK
+    delay(1000); // Opóźnienie, aby upewnić się, że kod został wysłany
     ir_code = rcCmdOk; // Przypisujemy kod pilota - OK
     bit_count = 32;
     calcNec();        // Przeliczamy kod pilota na pełny kod NEC
